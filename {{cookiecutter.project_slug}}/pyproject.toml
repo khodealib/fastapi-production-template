@@ -9,11 +9,10 @@ authors = [
 ]
 dependencies = [
 {% if cookiecutter.fastapi_version == "latest" %}
-    "fastapi>=0.115",
+    "fastapi[standard]>=0.115",
 {% else %}
-    "fastapi>={{ cookiecutter.fastapi_version.split('.')[0] }}.{{ cookiecutter.fastapi_version.split('.')[1] }},<{{ cookiecutter.fastapi_version.split('.')[0] }}.{{ cookiecutter.fastapi_version.split('.')[1] | int + 1 }}",
+    "fastapi[standard]>={{ cookiecutter.fastapi_version.split('.')[0] }}.{{ cookiecutter.fastapi_version.split('.')[1] }},<{{ cookiecutter.fastapi_version.split('.')[0] }}.{{ cookiecutter.fastapi_version.split('.')[1] | int + 1 }}",
 {% endif %}
-    "uvicorn[standard]>=0.30",
     "sqlalchemy[asyncio]>=2.0.30",
     "alembic>=1.13",
     "asyncpg>=0.29",
