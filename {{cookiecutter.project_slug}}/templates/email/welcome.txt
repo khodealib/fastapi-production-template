@@ -1,0 +1,3 @@
+Hi,{% if full_name %} {{ full_name }}{% endif %}!
+
+Welcome to {{ app_name }}.
