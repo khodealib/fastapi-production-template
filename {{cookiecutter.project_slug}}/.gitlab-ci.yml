@@ -4,13 +4,12 @@ stages:
   - build
 
 variables:
-  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
   UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
 
 cache:
   key: ${CI_COMMIT_REF_SLUG}
   paths:
-    - .cache/
+    - .cache/uv
 
 # ---------------------------------------------------------------------------
 # Lint & Format
@@ -21,11 +20,11 @@ lint:
   before_script:
     - uv sync
   script:
-    - uv run ruff check $CI_PROJECT_DIR/{{ cookiecutter.package_name }} tests
-    - uv run ruff format --check $CI_PROJECT_DIR/{{ cookiecutter.package_name }} tests
+    - uv run ruff check {{ cookiecutter.package_name }} tests
+    - uv run ruff format --check {{ cookiecutter.package_name }} tests
   rules:
-    - if: $CI_MERGE_REQUEST_IID
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "dev"
 
 typecheck:
@@ -34,10 +33,10 @@ typecheck:
   before_script:
     - uv sync
   script:
-    - uv run mypy --strict $CI_PROJECT_DIR/{{ cookiecutter.package_name }} tests
+    - uv run mypy --strict {{ cookiecutter.package_name }} tests
   rules:
-    - if: $CI_MERGE_REQUEST_IID
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "dev"
 
 # ---------------------------------------------------------------------------
@@ -67,8 +66,8 @@ test:
     - uv run alembic upgrade head
     - uv run pytest -v --tb=short
   rules:
-    - if: $CI_MERGE_REQUEST_IID
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "dev"
 
 # ---------------------------------------------------------------------------
@@ -76,14 +75,42 @@ test:
 # ---------------------------------------------------------------------------
 build:
   stage: build
-  image: docker:latest
+  image: docker:27
   services:
-    - docker:dind
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
   before_script:
     - docker info
   script:
     - docker build -t $CI_PROJECT_NAME:$CI_COMMIT_SHA .
+    - docker tag $CI_PROJECT_NAME:$CI_COMMIT_SHA $CI_PROJECT_NAME:latest
   rules:
-    - if: $CI_MERGE_REQUEST_IID
-    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "dev"
+
+# ---------------------------------------------------------------------------
+# Docker Push (main/dev only, after all jobs pass)
+# ---------------------------------------------------------------------------
+push:
+  stage: build
+  image: docker:27
+  services:
+    - docker:27-dind
+  variables:
+    DOCKER_TLS_CERTDIR: "/certs"
+  before_script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    - docker build -t $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA .
+    - docker tag $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA $CI_REGISTRY_IMAGE:latest
+    - docker push $CI_REGISTRY_IMAGE:$CI_COMMIT_SHA
+    - docker push $CI_REGISTRY_IMAGE:latest
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+      when: on_success
+    - if: $CI_COMMIT_BRANCH == "dev"
+      when: on_success
+    - when: never
