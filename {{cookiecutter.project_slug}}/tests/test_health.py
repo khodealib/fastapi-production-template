@@ -1,6 +1,6 @@
 import pytest
-from fixture_project.core.config import Settings
-from fixture_project.core.constants import Environment
+from fixture.core.config import Settings
+from fixture.core.constants import Environment
 from httpx import AsyncClient
 
 

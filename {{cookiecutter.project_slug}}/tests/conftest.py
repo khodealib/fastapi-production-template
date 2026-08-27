@@ -17,9 +17,9 @@ from typing import TYPE_CHECKING
 
 import pytest
 import pytest_asyncio
-from fixture_project.core.database import Base, SessionFactory, engine
-from fixture_project.infrastructure.ratelimit import get_rate_limiter, get_storage
-from fixture_project.main import app
+from fixture.core.database import Base, SessionFactory, engine
+from fixture.infrastructure.ratelimit import get_rate_limiter, get_storage
+from fixture.main import app
 from httpx import ASGITransport, AsyncClient
 
 if TYPE_CHECKING:

@@ -1,7 +1,7 @@
 from typing import Any
 
-from fixture_project.modules.users.crud import UserRepository
-from fixture_project.modules.users.service import RegisterUser
+from fixture.modules.users.crud import UserRepository
+from fixture.modules.users.service import RegisterUser
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
