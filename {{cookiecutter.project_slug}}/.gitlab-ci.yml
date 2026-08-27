@@ -1,0 +1,89 @@
+stages:
+  - lint
+  - test
+  - build
+
+variables:
+  PIP_CACHE_DIR: "$CI_PROJECT_DIR/.cache/pip"
+  UV_CACHE_DIR: "$CI_PROJECT_DIR/.cache/uv"
+
+cache:
+  key: ${CI_COMMIT_REF_SLUG}
+  paths:
+    - .cache/
+
+# ---------------------------------------------------------------------------
+# Lint & Format
+# ---------------------------------------------------------------------------
+lint:
+  stage: lint
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  before_script:
+    - uv sync
+  script:
+    - uv run ruff check $CI_PROJECT_DIR/{{ cookiecutter.package_name }} tests
+    - uv run ruff format --check $CI_PROJECT_DIR/{{ cookiecutter.package_name }} tests
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+typecheck:
+  stage: lint
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  before_script:
+    - uv sync
+  script:
+    - uv run mypy --strict $CI_PROJECT_DIR/{{ cookiecutter.package_name }} tests
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+# ---------------------------------------------------------------------------
+# Test
+# ---------------------------------------------------------------------------
+test:
+  stage: test
+  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  services:
+    - name: postgres:16
+      alias: db
+      variables:
+        POSTGRES_USER: app
+        POSTGRES_PASSWORD: app
+        POSTGRES_DB: test
+    - name: redis:7
+      alias: redis
+  variables:
+    DATABASE_URL: postgresql+asyncpg://app:app@db:5432/test
+    REDIS_URL: redis://redis:6379/0
+    RATE_LIMIT_STORAGE_URI: redis://redis:6379/1
+    SECRET_KEY: ci-test-secret-key-at-least-32-bytes
+    ENVIRONMENT: test
+  before_script:
+    - uv sync
+  script:
+    - uv run alembic upgrade head
+    - uv run pytest -v --tb=short
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "dev"
+
+# ---------------------------------------------------------------------------
+# Docker Build
+# ---------------------------------------------------------------------------
+build:
+  stage: build
+  image: docker:latest
+  services:
+    - docker:dind
+  before_script:
+    - docker info
+  script:
+    - docker build -t $CI_PROJECT_NAME:$CI_COMMIT_SHA .
+  rules:
+    - if: $CI_MERGE_REQUEST_IID
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
+    - if: $CI_COMMIT_BRANCH == "dev"

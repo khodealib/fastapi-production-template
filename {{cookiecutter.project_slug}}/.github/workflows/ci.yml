@@ -1,0 +1,89 @@
+name: Code Quality
+
+on:
+  pull_request:
+    branches: [main, dev]
+  push:
+    branches: [main, dev]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint & Format
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: Ruff check
+        run: uv run ruff check {{ cookiecutter.package_name }} tests
+      - name: Ruff format check
+        run: uv run ruff format --check {{ cookiecutter.package_name }} tests
+
+  typecheck:
+    name: Type Check
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: mypy
+        run: uv run mypy --strict {{ cookiecutter.package_name }} tests
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: app
+          POSTGRES_DB: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql+asyncpg://app:app@localhost:5432/test
+      REDIS_URL: redis://localhost:6379/0
+      RATE_LIMIT_STORAGE_URI: redis://localhost:6379/1
+      SECRET_KEY: ci-test-secret-key-at-least-32-bytes
+      ENVIRONMENT: test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync
+      - name: Run migrations
+        run: uv run alembic upgrade head
+      - name: Run tests
+        run: uv run pytest -v --tb=short
+
+  docker:
+    name: Docker Build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build -t {{ cookiecutter.package_name }}:ci .
