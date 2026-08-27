@@ -1,0 +1,13 @@
+# Persian (Iran) translations for installation.
+msgid ""
+msgstr ""
+"Project-Id-Version: {{ cookiecutter.project_name }} 0.1.0\n"
+"Language: fa_IR\n"
+
+#: docs/installation.rst:6
+msgid "Using uv (recommended)"
+msgstr "استفاده از uv (توصیه شده)"
+
+#: docs/installation.rst:16
+msgid "Using Docker"
+msgstr "استفاده از Docker"

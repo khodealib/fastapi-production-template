@@ -42,6 +42,13 @@ dev = [
     "mypy>=1.10",
     "ruff>=0.5",
 ]
+docs = [
+    "sphinx>=8.0",
+    "furo>=2024.0",
+    "sphinx-autodoc-typehints>=2.0",
+    "sphinx-intl>=2.2",
+    "sphinx-autobuild>=2024.0",
+]
 
 [build-system]
 requires = ["hatchling"]

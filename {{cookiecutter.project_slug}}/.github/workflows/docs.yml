@@ -1,0 +1,69 @@
+name: Deploy Docs
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+
+      - name: Install dependencies
+        run: |
+          uv sync
+          uv pip install -r docs/requirements.txt
+
+      - name: Build English docs
+        run: uv run sphinx-build -b html -D language=en docs docs/_build/en
+
+      - name: Update Persian translations
+        run: |
+          uv run sphinx-build -b gettext docs docs/_build/gettext
+          uv run sphinx-intl update -p docs/_build/gettext -l fa_IR
+
+      - name: Build Persian docs
+        run: uv run sphinx-build -b html -D language=fa_IR docs docs/_build/fa_IR
+
+      - name: Add redirects
+        run: |
+          cat > docs/_build/index.html << 'EOF'
+          <!DOCTYPE html>
+          <html>
+          <head><meta http-equiv="refresh" content="0; url=en/"></head>
+          <body><p>Redirecting to <a href="en/">English docs</a>...</p></body>
+          </html>
+          EOF
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/_build
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

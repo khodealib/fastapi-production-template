@@ -1,0 +1,5 @@
+sphinx>=8.0
+furo>=2024.0
+sphinx-autodoc-typehints>=2.0
+sphinx-intl>=2.2
+Babel>=2.14

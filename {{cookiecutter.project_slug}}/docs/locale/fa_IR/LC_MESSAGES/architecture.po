@@ -1,0 +1,13 @@
+# Persian (Iran) translations for architecture.
+msgid ""
+msgstr ""
+"Project-Id-Version: {{ cookiecutter.project_name }} 0.1.0\n"
+"Language: fa_IR\n"
+
+#: docs/architecture.rst:4
+msgid "Layer rules"
+msgstr "قوانین لایه‌بندی"
+
+#: docs/architecture.rst:30
+msgid "Key patterns"
+msgstr "الگوهای کلیدی"

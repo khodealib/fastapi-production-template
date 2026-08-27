@@ -15,6 +15,7 @@
         ".gitlab-ci.yml",
         ".pre-commit-config.yaml",
         "**/locales/**",
-        "templates/**"
+        "templates/**",
+        "docs/**/*.po"
     ]
 }
