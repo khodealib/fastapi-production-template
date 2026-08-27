@@ -80,7 +80,7 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"{{ cookiecutter.package_name }}/alembic/versions/*.py" = ["I", "UP", "SIM"]
+"{{ cookiecutter.package_name }}/alembic/versions/*.py" = ["I", "UP", "SIM", "E501", "W"]
 "tests/*" = ["S101"]
 
 [tool.ruff.lint.flake8-type-checking]

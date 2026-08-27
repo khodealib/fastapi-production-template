@@ -1,7 +1,7 @@
 import pytest
-from fixture.core.config import Settings
-from fixture.core.constants import Environment
 from httpx import AsyncClient
+from {{ cookiecutter.package_name }}.core.config import Settings
+from {{ cookiecutter.package_name }}.core.constants import Environment
 
 
 async def test_live(client: AsyncClient) -> None:
