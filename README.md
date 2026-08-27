@@ -9,7 +9,7 @@ ruff/mypy/pytest toolchain under `uv`.
 ## Use
 
 ```bash
-uv run --from cookiecutter cookiecutter https://github.com/your-org/fastapi-production-template
+uv run --from cookiecutter cookiecutter https://github.com/khodealib/fastapi-production-template
 ```
 
 or locally:
