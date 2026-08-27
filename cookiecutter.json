@@ -1,0 +1,15 @@
+{
+    "project_name": "FastAPI Service",
+    "project_slug": "{{ cookiecutter.project_name.lower().replace(' ', '-').replace('_', '-') }}",
+    "package_name": "{{ cookiecutter.project_slug.lower().replace('-', '_') }}",
+    "description": "Production-ready FastAPI template with Django-grade batteries.",
+    "author_name": "Your Name",
+    "author_email": "you@example.com",
+    "version": "0.1.0",
+    "_copy_without_render": [
+        "*.html",
+        ".gitignore",
+        "**/locales/**",
+        "templates/**"
+    ]
+}

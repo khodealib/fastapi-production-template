@@ -1,0 +1,132 @@
+[project]
+name = "{{ cookiecutter.project_slug }}"
+version = "{{ cookiecutter.version }}"
+description = "{{ cookiecutter.description }}"
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [
+    { name = "{{ cookiecutter.author_name }}", email = "{{ cookiecutter.author_email }}" },
+]
+dependencies = [
+    "fastapi>=0.115",
+    "uvicorn[standard]>=0.30",
+    "sqlalchemy[asyncio]>=2.0.30",
+    "alembic>=1.13",
+    "asyncpg>=0.29",
+    "aiosqlite>=0.20",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.3",
+    "email-validator>=2.1",
+    "PyJWT>=2.8",
+    "pwdlib[argon2]>=0.2",
+    "python-multipart>=0.0.9",
+    "sqladmin>=0.20",
+    "jinja2>=3.1",
+    "celery>=5.4",
+    "redis>=5.0",
+    "structlog>=24.1",
+    "limits>=3.10",
+    "typer>=0.12",
+    "babel>=2.14",
+    "itsdangerous>=2.2",
+]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "httpx>=0.27",
+    "mypy>=1.10",
+    "ruff>=0.5",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build]
+packages = ["{{ cookiecutter.package_name }}"]
+
+[tool.uv]
+package = true
+default-groups = ["dev"]
+
+# ---------------------------------------------------------------------------
+# ruff
+# ---------------------------------------------------------------------------
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+src = ["{{ cookiecutter.package_name }}", "tests"]
+
+[tool.ruff.lint]
+select = [
+    "E", "W",    # pycodestyle
+    "F",         # pyflakes
+    "I",         # isort
+    "UP",        # pyupgrade
+    "B",         # bugbear
+    "SIM",       # simplify
+    "ASYNC",     # flake8-async
+    "RET",       # flake8-return
+    "ARG",       # flake8-unused-arguments
+    "RUF",       # ruff-specific
+    "BLE",       # flake8-blind-except
+]
+ignore = [
+    "B008",      # Function call in default argument (Depends() is idiomatic)
+    "RET505",    # unnecessary else-after-return
+    "RUF012",    # mutable class attributes are the SQLAdmin view API
+]
+
+[tool.ruff.lint.per-file-ignores]
+"{{ cookiecutter.package_name }}/alembic/versions/*.py" = ["I", "UP", "SIM"]
+"tests/*" = ["S101"]
+
+[tool.ruff.lint.flake8-type-checking]
+runtime-evaluated-base-classes = [
+    "sqlalchemy.orm.DeclarativeBase",
+    "sqlalchemy.orm.MappedAsDataclass",
+]
+runtime-evaluated-decorators = [
+    "pydantic.validators.validator",
+    "pydantic.field_validator",
+    "pydantic.model_validator",
+    "sqlalchemy.orm.mapped_column",
+]
+
+[tool.ruff.format]
+quote-style = "double"
+
+# ---------------------------------------------------------------------------
+# mypy
+# ---------------------------------------------------------------------------
+[tool.mypy]
+python_version = "3.12"
+strict = true
+plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
+files = ["{{ cookiecutter.package_name }}", "tests"]
+warn_unused_ignores = true
+warn_unused_configs = true
+warn_redundant_casts = true
+disallow_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = "alembic.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "celery.*"
+ignore_missing_imports = true
+
+# ---------------------------------------------------------------------------
+# pytest
+# ---------------------------------------------------------------------------
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+addopts = "--strict-markers --strict-config"
+filterwarnings = [
+    "error",
+    "ignore::DeprecationWarning:alembic.*",
+]

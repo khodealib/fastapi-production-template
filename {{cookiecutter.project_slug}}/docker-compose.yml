@@ -1,0 +1,73 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: {{ cookiecutter.project_slug }}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d {{ cookiecutter.project_slug }}"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "5432:5432"
+
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    ports:
+      - "6379:6379"
+
+  api:
+    build: .
+    command: uvicorn {{ cookiecutter.package_name }}.main:app --host 0.0.0.0 --port 8000
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app:app@db:5432/{{ cookiecutter.project_slug }}
+      REDIS_URL: redis://redis:6379/0
+      RATE_LIMIT_STORAGE_URI: redis://redis:6379/1
+      ENVIRONMENT: development
+      SECRET_KEY: ${SECRET_KEY:-dev-insecure-secret-change-me}
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  worker:
+    build: .
+    command: celery -A {{ cookiecutter.package_name }}.tasks.celery_app worker --loglevel=info
+    environment:
+      DATABASE_URL: postgresql+asyncpg://app:app@db:5432/{{ cookiecutter.project_slug }}
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+    env_file:
+      - .env
+    depends_on:
+      api:
+        condition: service_started
+
+  beat:
+    build: .
+    command: celery -A {{ cookiecutter.package_name }}.tasks.celery_app beat --loglevel=info
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      ENVIRONMENT: development
+    env_file:
+      - .env
+    depends_on:
+      api:
+        condition: service_started
+
+volumes:
+  pgdata:
