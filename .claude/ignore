@@ -1,0 +1,30 @@
+# Claude ignore patterns for fastapi-production-template
+
+# Generated project verification directories
+/tmp/
+*/.venv/
+*/__pycache__/
+
+# Build artifacts
+*.egg-info/
+dist/
+build/
+
+# Cache directories
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+
+# Environment files
+.env
+.env.*
+
+# Generated project (when testing)
+fixture_project/
+gen/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
