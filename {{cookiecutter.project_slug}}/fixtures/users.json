@@ -1,0 +1,14 @@
+[
+    {
+        "email": "admin@example.com",
+        "password": "SuperS3cret!",
+        "full_name": "Demo Admin",
+        "is_superuser": true
+    },
+    {
+        "email": "alice@example.com",
+        "password": "SuperS3cret!",
+        "full_name": "Alice Example",
+        "is_superuser": false
+    }
+]
