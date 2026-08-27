@@ -6,14 +6,14 @@ WORKDIR /app
 ENV UV_COMPILE_BYTECODE=1 UV_LINK_MODE=copy
 
 # Install dependencies first (cached layer)
-COPY pyproject.toml uv.lock ./
+COPY pyproject.toml README.md ./
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-install-project --no-dev
+    uv sync --no-install-project --no-dev
 
 # Copy application code and install
-COPY {{ cookiecutter.package_name }} ./{{ cookiecutter.package_name }}
+COPY fixture ./fixture
 RUN --mount=type=cache,target=/root/.cache/uv \
-    uv sync --frozen --no-dev
+    uv sync --no-dev
 
 # ---------------------------------------------------------------------------
 # Runtime image
@@ -27,17 +27,19 @@ RUN apt-get update \
     && apt-get install -y --no-install-recommends curl \
     && rm -rf /var/lib/apt/lists/*
 
+# Create non-root user
+RUN useradd --create-home --user-group app
+
 WORKDIR /app
 
-# Copy only what's needed from builder
+# Copy everything with correct ownership in one layer
 COPY --from=builder --chown=app:app /app/.venv .venv
-COPY --from=builder /app/{{ cookiecutter.package_name }} ./{{ cookiecutter.package_name }}
-COPY --from=builder /app/alembic.ini ./alembic.ini
-COPY --from=builder /app/{{ cookiecutter.package_name }}/alembic ./alembic
+COPY --from=builder --chown=app:app /app/fixture ./fixture
 
-# Create non-root user
-RUN useradd --create-home --user-group app \
-    && chown -R app:app /app
+# Create writable directories for the app
+RUN mkdir -p /app/media /app/static \
+    && chown -R app:app /app/media /app/static
+
 USER app
 
 EXPOSE 8000
@@ -45,4 +47,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
     CMD curl -f http://localhost:8000/live || exit 1
 
-CMD ["uvicorn", "{{ cookiecutter.package_name }}.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "fixture.main:app", "--host", "0.0.0.0", "--port", "8000"]
