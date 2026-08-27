@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --no-dev
 
 # Copy application code and install
-COPY fixture ./fixture
+COPY {{ cookiecutter.package_name }} ./{{ cookiecutter.package_name }}
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev
 
@@ -34,7 +34,7 @@ WORKDIR /app
 
 # Copy everything with correct ownership in one layer
 COPY --from=builder --chown=app:app /app/.venv .venv
-COPY --from=builder --chown=app:app /app/fixture ./fixture
+COPY --from=builder --chown=app:app /app/{{ cookiecutter.package_name }} ./{{ cookiecutter.package_name }}
 
 # Create writable directories for the app
 RUN mkdir -p /app/media /app/static \
@@ -47,4 +47,4 @@ EXPOSE 8000
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
     CMD curl -f http://localhost:8000/live || exit 1
 
-CMD ["uvicorn", "fixture.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "{{ cookiecutter.package_name }}.main:app", "--host", "0.0.0.0", "--port", "8000"]
