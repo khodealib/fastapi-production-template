@@ -10,6 +10,7 @@ __pycache__
 .pytest_cache
 tests
 media
+.devcontainer
 .claude
 .gitignore
 .pre-commit-config.yaml

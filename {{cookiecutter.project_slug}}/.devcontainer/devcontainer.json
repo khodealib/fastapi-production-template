@@ -1,0 +1,60 @@
+{
+  "name": "{{ cookiecutter.project_name }} Dev",
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+  "postCreateCommand": "make install && make init && make makemigrations m='initial' && make migrate && make format",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        "charliermarsh.ruff",
+        "ms-python.mypy-type-checker",
+        "mtxr.sqltools",
+        "mtxr.sqltools-driver-pg",
+        "ms-azuretools.vscode-docker",
+        "tamaste.even-better-toml",
+        "eamodio.gitlens",
+        "ms-python.debugpy",
+        "christian-kohler.path-intellisense"
+      ],
+      "settings": {
+        "python.defaultInterpreterPath": "/usr/local/bin/python",
+        "python.terminal.activateEnvironment": true,
+        "[python]": {
+          "editor.defaultFormatter": "charliermarsh.ruff",
+          "editor.formatOnSave": true,
+          "editor.codeActionsOnSave": {
+            "source.organizeImports.ruff": "explicit"
+          }
+        },
+        "editor.rulers": [88],
+        "files.trimTrailingWhitespace": true,
+        "files.insertFinalNewline": true,
+        "files.associations": {
+          "*.toml": "toml"
+        },
+        "sqltools.connections": [
+          {
+            "name": "PostgreSQL",
+            "driver": "PostgreSQL",
+            "connectionSettings": {
+              "host": "db",
+              "port": 5432,
+              "database": "{{ cookiecutter.project_slug }}",
+              "user": "{{ cookiecutter.project_slug }}",
+              "password": "devpassword"
+            }
+          }
+        ]
+      }
+    }
+  },
+  "forwardPorts": [8000, 5432, 6379],
+  "portsAttributes": {
+    "8000": { "label": "API", "onAutoForward": "notify" },
+    "5432": { "label": "PostgreSQL", "onAutoForward": "silent" },
+    "6379": { "label": "Redis", "onAutoForward": "silent" }
+  }
+}
