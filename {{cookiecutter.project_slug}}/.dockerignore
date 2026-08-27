@@ -10,3 +10,8 @@ __pycache__
 .pytest_cache
 tests
 media
+.claude
+.gitignore
+.pre-commit-config.yaml
+.gitlab-ci.yml
+.github
