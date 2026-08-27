@@ -8,11 +8,11 @@ from __future__ import annotations
 import asyncio
 from logging.config import fileConfig
 
+from sqlalchemy import pool
+from sqlalchemy.ext.asyncio import create_async_engine
 from {{ cookiecutter.package_name }}.core.config import get_settings
 from {{ cookiecutter.package_name }}.core.database import Base
 from {{ cookiecutter.package_name }}.modules.users import models as _users_models  # noqa: F401
-from sqlalchemy import pool
-from sqlalchemy.ext.asyncio import create_async_engine
 
 from alembic import context
 

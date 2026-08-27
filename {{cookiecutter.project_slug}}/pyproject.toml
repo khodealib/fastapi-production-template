@@ -3,12 +3,16 @@ name = "{{ cookiecutter.project_slug }}"
 version = "{{ cookiecutter.version }}"
 description = "{{ cookiecutter.description }}"
 readme = "README.md"
-requires-python = ">=3.12"
+requires-python = ">={{ cookiecutter.python_version }}"
 authors = [
     { name = "{{ cookiecutter.author_name }}", email = "{{ cookiecutter.author_email }}" },
 ]
 dependencies = [
+{% if cookiecutter.fastapi_version == "latest" %}
     "fastapi>=0.115",
+{% else %}
+    "fastapi>={{ cookiecutter.fastapi_version.split('.')[0] }}.{{ cookiecutter.fastapi_version.split('.')[1] }},<{{ cookiecutter.fastapi_version.split('.')[0] }}.{{ cookiecutter.fastapi_version.split('.')[1] | int + 1 }}",
+{% endif %}
     "uvicorn[standard]>=0.30",
     "sqlalchemy[asyncio]>=2.0.30",
     "alembic>=1.13",
@@ -55,7 +59,7 @@ default-groups = ["dev"]
 # ruff
 # ---------------------------------------------------------------------------
 [tool.ruff]
-target-version = "py312"
+target-version = "py{{ cookiecutter.python_version.replace('.', '') }}"
 line-length = 88
 src = ["{{ cookiecutter.package_name }}", "tests"]
 
@@ -102,7 +106,7 @@ quote-style = "double"
 # mypy
 # ---------------------------------------------------------------------------
 [tool.mypy]
-python_version = "3.12"
+python_version = "{{ cookiecutter.python_version }}"
 strict = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
 files = ["{{ cookiecutter.package_name }}", "tests"]

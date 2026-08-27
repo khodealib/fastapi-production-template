@@ -1,9 +1,9 @@
 from typing import Any
 
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from {{ cookiecutter.package_name }}.modules.users.crud import UserRepository
 from {{ cookiecutter.package_name }}.modules.users.service import RegisterUser
-from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 PASSWORD = "SuperS3cret!"
 EMAIL = "alice@example.com"
