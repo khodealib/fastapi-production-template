@@ -18,6 +18,9 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
         start = time.perf_counter()
 
+        # Store request_id in request.state for access by response builders
+        request.state.request_id = request_id
+
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
