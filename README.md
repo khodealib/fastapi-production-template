@@ -1,5 +1,15 @@
 # FastAPI Production Template
 
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
+![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9?logo=uv&logoColor=white)
+![License](https://img.shields.io/badge/License-MIT-blue)
+
+**The starting line for production FastAPI services.**  
+Batteries included: admin, auth, migrations, tasks, observability — all typed, linted, tested.
+
+---
+
 A cookiecutter template that generates a production-ready FastAPI project with
 Django-grade batteries: admin panel, async ORM + migrations, JWT auth, Celery,
 structured logging, i18n, email, caching, and multi-strategy rate limiting —

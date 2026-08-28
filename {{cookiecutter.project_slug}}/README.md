@@ -1,5 +1,14 @@
 # {{ cookiecutter.project_name }}
 
+![Python](https://img.shields.io/badge/Python-3.12%2B-3776AB?logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0.115%2B-009688?logo=fastapi&logoColor=white)
+![uv](https://img.shields.io/badge/uv-package_manager-DE5FE9?logo=uv&logoColor=white)
+
+**The starting line for production FastAPI services.**  
+Batteries included: admin, auth, migrations, tasks, observability — all typed, linted, tested.
+
+---
+
 {{ cookiecutter.description }}
 
 A production-ready FastAPI project with Django-like batteries — async ORM, JWT auth,
