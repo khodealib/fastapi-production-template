@@ -35,6 +35,8 @@ make verify                 # ruff + mypy + pytest
 | `make lint` | ruff check + format check + mypy |
 | `make format` | Auto-fix lint issues |
 | `make verify` | Full CI check (lint + test) |
+| `make docs` | Build Sphinx docs (en + fa_IR) |
+| `make docs-live` | Live-reload docs server |
 
 ## Architecture
 
@@ -48,9 +50,10 @@ make verify                 # ruff + mypy + pytest
 │   ├── database.py         # async engine, session dependency
 │   ├── security.py         # JWT encode/decode, argon2 hashing
 │   ├── exceptions.py       # AppError hierarchy
-│   ├── schemas.py          # CustomModel base (datetime serialization)
+│   ├── schemas.py          # CustomModel base + envelope types
 │   ├── health/             # /health, /live probes
-│   └── pagination.py       # Page / page_params helpers
+│   ├── pagination.py       # Page / page_params helpers
+│   └── response.py         # envelope response helpers
 ├── infrastructure/
 │   ├── cache.py            # Redis helpers (no-op without REDIS_URL)
 │   ├── email.py            # SMTP sender + Jinja2 templates
@@ -75,7 +78,7 @@ make verify                 # ruff + mypy + pytest
 - **routes.py** — parses request, calls use case, returns response. No DB logic.
 - **service.py** — use cases as classes with `execute()` method.
 - **crud.py** — repository adapters wrapping `AsyncSession`. Data access only.
-- **interactor.py** — orchestrates multiple use cases for complex flows.
+- **interactor.py** — orchestrates multiple services for complex flows.
 - **models.py** — SQLAlchemy ORM entities (the model IS the entity).
 
 ### Adding a New Module
@@ -85,12 +88,19 @@ make verify                 # ruff + mypy + pytest
    ```python
    from fastapi import APIRouter, Depends
    from ...core.database import get_session
-   
+   from ...core.response import success_response, paginated_response
+
    {name}_router = APIRouter(prefix="/{name}", tags=["{name}"])
-   
-   @{name}_router.get("")
-   async def list_items(session: Session):
-       ...
+
+   @{name}_router.get("", response_model=ItemListEnvelope)
+   async def list_items(
+       request: Request,
+       session: Session,
+       params: Annotated[PageParams, Depends(page_params)],
+   ) -> ItemListEnvelope:
+       repo = ItemRepository(session)
+       items, total = await ListItems(repo).execute(page=params.page, size=params.size)
+       return paginated_response(items, total, params, request=request)
    ```
 3. Register in `api.py`:
    ```python
@@ -113,6 +123,69 @@ make verify                 # ruff + mypy + pytest
 | Logging | structlog (JSON prod, console dev) |
 | Rate limiting | `limits` library (3 strategies) |
 | Security | CORS, TrustedHost, GZip |
+
+## API Response Format
+
+All endpoints return a consistent envelope structure:
+
+### Success — Single Resource
+```json
+{
+  "success": true,
+  "data": { "id": "...", "email": "..." },
+  "message": "User created successfully",
+  "errors": null,
+  "meta": { "request_id": "abc123", "pagination": null }
+}
+```
+
+### Success — Paginated List
+```json
+{
+  "success": true,
+  "data": [{ "id": "..." }, { "id": "..." }],
+  "message": "Users retrieved",
+  "errors": null,
+  "meta": {
+    "request_id": "abc123",
+    "pagination": { "page": 1, "size": 20, "total": 100, "pages": 5 }
+  }
+}
+```
+
+### Error
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "User not found",
+  "errors": [{ "code": "not_found", "message": "User not found", "field": null }],
+  "meta": { "request_id": "abc123", "pagination": null }
+}
+```
+
+### Validation Error (422)
+```json
+{
+  "success": false,
+  "data": null,
+  "message": "Validation failed",
+  "errors": [{ "code": "validation_error", "message": "Invalid email", "field": "email" }],
+  "meta": { "request_id": "abc123", "pagination": null }
+}
+```
+
+**Field reference:**
+
+| Field | Type | Description |
+|---|---|---|
+| `success` | bool | `true` for 2xx, `false` for 4xx/5xx |
+| `data` | object/array/null | Response payload on success |
+| `message` | string/null | Human-readable summary |
+| `errors` | array/null | Structured error details on failure |
+| `meta` | object | Request metadata (request_id, pagination) |
+
+HTTP status codes remain accurate (200, 201, 400, 401, 404, 409, 422, 500).
 
 ## Rate Limiting
 
@@ -150,3 +223,13 @@ All settings via environment variables (or `.env`):
 - [ ] Configure `SMTP_HOST` for email
 - [ ] Set `LOG_JSON=true` for structured logging
 - [ ] Run `make migrate` to apply migrations
+
+## Documentation
+
+Build multi-language docs:
+```bash
+make docs          # builds en/ and fa_IR/
+make docs-live     # live-reload server
+```
+
+Docs deploy automatically to GitHub Pages on push to `main`.

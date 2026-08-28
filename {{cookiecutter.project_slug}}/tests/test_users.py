@@ -24,7 +24,11 @@ def _register_payload(**overrides: str | None) -> Payload:
 async def _register(client: AsyncClient, email: str = EMAIL) -> Payload:
     resp = await client.post("/api/auth/register", json=_register_payload(email=email))
     assert resp.status_code == 201
-    return Payload(resp.json())
+    body = resp.json()
+    assert body["success"] is True
+    assert body["data"]["email"] == email
+    assert body["message"] == "User registered successfully"
+    return Payload(body["data"])
 
 
 async def _login(
@@ -35,7 +39,12 @@ async def _login(
         data={"username": email, "password": password},
     )
     assert resp.status_code == 200
-    return Payload(resp.json())
+    body = resp.json()
+    assert body["success"] is True
+    assert body["data"]["access_token"]
+    assert body["data"]["refresh_token"]
+    assert body["message"] == "Login successful"
+    return Payload(body["data"])
 
 
 async def _create_superuser(
@@ -65,7 +74,9 @@ async def test_register_rejects_duplicate_email(client: AsyncClient) -> None:
     await _register(client)
     resp = await client.post("/api/auth/register", json=_register_payload())
     assert resp.status_code == 409
-    assert resp.json()["code"] == "conflict"
+    body = resp.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "conflict"
 
 
 async def test_register_rejects_weak_password(client: AsyncClient) -> None:
@@ -73,7 +84,10 @@ async def test_register_rejects_weak_password(client: AsyncClient) -> None:
         "/api/auth/register", json=_register_payload(password="weakpassword")
     )
     assert resp.status_code == 422
-    assert resp.json()["detail"][0]["loc"] == ["body", "password"]
+    body = resp.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "validation_error"
+    assert body["errors"][0]["field"] == "body.password"
 
 
 # --- token flow --------------------------------------------------------------
@@ -94,6 +108,9 @@ async def test_login_wrong_password_returns_401(client: AsyncClient) -> None:
         data={"username": EMAIL, "password": "WrongPass1!"},
     )
     assert resp.status_code == 401
+    body = resp.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "unauthorized"
 
 
 async def test_me_requires_and_returns_user(client: AsyncClient) -> None:
@@ -103,10 +120,16 @@ async def test_me_requires_and_returns_user(client: AsyncClient) -> None:
 
     resp = await client.get("/api/users/me", headers=headers)
     assert resp.status_code == 200
-    assert resp.json()["email"] == EMAIL
+    body = resp.json()
+    assert body["success"] is True
+    assert body["data"]["email"] == EMAIL
+    assert body["message"] == "Current user retrieved"
 
     anon = await client.get("/api/users/me")
     assert anon.status_code == 401
+    body = anon.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "unauthorized"
 
 
 async def test_refresh_rotates_tokens(client: AsyncClient) -> None:
@@ -117,19 +140,27 @@ async def test_refresh_rotates_tokens(client: AsyncClient) -> None:
         "/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
     assert resp.status_code == 200
-    new_tokens = resp.json()
-    assert new_tokens["refresh_token"] != tokens["refresh_token"]
+    body = resp.json()
+    assert body["success"] is True
+    assert body["data"]["refresh_token"] != tokens["refresh_token"]
+    assert body["message"] == "Token refreshed successfully"
 
     # Old (revoked) refresh token must be rejected on reuse.
     reuse = await client.post(
         "/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
     assert reuse.status_code == 401
+    body = reuse.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "unauthorized"
 
 
 async def test_refresh_rejects_garbage(client: AsyncClient) -> None:
     resp = await client.post("/api/auth/refresh", json={"refresh_token": "not-a-jwt"})
     assert resp.status_code == 401
+    body = resp.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "unauthorized"
 
 
 # --- admin-only endpoints ----------------------------------------------------
@@ -148,6 +179,9 @@ async def test_users_list_requires_superuser(
         "/api/users", headers={"Authorization": f"Bearer {tokens['access_token']}"}
     )
     assert resp.status_code == 403
+    body = resp.json()
+    assert body["success"] is False
+    assert body["errors"][0]["code"] == "forbidden"
 
     # Superuser: allowed.
     admin = await _login(client, email="admin@example.com")
@@ -155,7 +189,11 @@ async def test_users_list_requires_superuser(
         "/api/users", headers={"Authorization": f"Bearer {admin['access_token']}"}
     )
     assert resp.status_code == 200
-    assert len(resp.json()["items"]) == 2
+    body = resp.json()
+    assert body["success"] is True
+    assert len(body["data"]) == 2
+    assert body["meta"]["pagination"]["total"] == 2
+    assert body["message"] == "Users retrieved"
 
 
 async def test_admin_login_page_served(client: AsyncClient) -> None:

@@ -1,5 +1,7 @@
 from typing import Any
 
+from .schemas import Envelope, EnvelopeMeta, ErrorDetail
+
 
 class AppError(Exception):
     """Base domain error, rendered as ``{"code": ..., "message": ...}``."""
@@ -22,6 +24,24 @@ class AppError(Exception):
             self.code = code
         self.extra = extra or {}
         super().__init__(self.message)
+
+    def to_error_detail(self) -> ErrorDetail:
+        """Convert to structured error detail for envelope."""
+        return ErrorDetail(code=self.code, message=self.message)
+
+    def to_envelope(
+        self, request_id: str, meta: EnvelopeMeta | None = None
+    ) -> Envelope[None]:
+        """Convert to error envelope response."""
+        if meta is None:
+            meta = EnvelopeMeta(request_id=request_id)
+        return Envelope(
+            success=False,
+            data=None,
+            message=self.message,
+            errors=[self.to_error_detail()],
+            meta=meta,
+        )
 
 
 class NotFoundError(AppError):

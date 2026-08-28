@@ -6,7 +6,9 @@ from contextlib import asynccontextmanager
 from typing import TYPE_CHECKING, Any
 from uuid import UUID
 
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, status
+from fastapi.exceptions import RequestValidationError
+from starlette.exceptions import HTTPException as StarletteHTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import JSONResponse
@@ -23,6 +25,7 @@ from .core.database import SessionFactory, dispose_engine, engine
 from .core.exceptions import AppError
 from .core.health import health_router
 from .core.logging_conf import configure_logging
+from .core.response import error_response, validation_error_response
 from .core.security import verify_password
 from .infrastructure.cache import close_redis
 from .middleware import (
@@ -65,6 +68,22 @@ class AdminAuth(AuthenticationBackend):
         async with SessionFactory() as session:
             user = await UserRepository(session).get_by_id(UUID(user_id))
             return bool(user and user.is_superuser)
+
+
+def _http_status_to_error_code(status_code: int) -> str:
+    """Map HTTP status codes to error codes."""
+    mapping = {
+        400: "bad_request",
+        401: "unauthorized",
+        403: "forbidden",
+        404: "not_found",
+        405: "method_not_allowed",
+        409: "conflict",
+        422: "validation_error",
+        429: "rate_limited",
+        500: "internal_error",
+    }
+    return mapping.get(status_code, "http_error")
 
 
 def create_app() -> FastAPI:
@@ -113,12 +132,67 @@ def create_app() -> FastAPI:
     # --- error handling -------------------------------------------------------
     @app.exception_handler(AppError)
     async def app_error_handler(
-        request: Request,  # noqa: ARG001 - signature fixed by Starlette
+        request: Request,
         exc: AppError,
     ) -> JSONResponse:
+        envelope = error_response(exc, request)
         return JSONResponse(
             status_code=exc.status_code,
-            content={"code": exc.code, "message": exc.message, **exc.extra},
+            content=envelope.model_dump(mode="json"),
+        )
+
+    @app.exception_handler(RequestValidationError)
+    async def validation_error_handler(
+        request: Request,
+        exc: RequestValidationError,
+    ) -> JSONResponse:
+        from .core.schemas import ErrorDetail
+
+        errors = [
+            ErrorDetail(
+                code="validation_error",
+                message=err["msg"],
+                field=".".join(str(loc) for loc in err["loc"]) if err["loc"] else None,
+            )
+            for err in exc.errors()
+        ]
+        envelope = validation_error_response(errors, request=request)
+        return JSONResponse(
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            content=envelope.model_dump(mode="json"),
+        )
+
+    @app.exception_handler(StarletteHTTPException)
+    async def http_exception_handler(
+        request: Request,
+        exc: StarletteHTTPException,
+    ) -> JSONResponse:
+        from .core.schemas import Envelope, EnvelopeMeta, ErrorDetail
+
+        request_id = getattr(request.state, "request_id", "unknown")
+        meta = EnvelopeMeta(request_id=request_id)
+        error_code = _http_status_to_error_code(exc.status_code)
+        envelope: Envelope[None] = Envelope(
+            success=False,
+            data=None,
+            message=exc.detail,
+            errors=[ErrorDetail(code=error_code, message=exc.detail)],
+            meta=meta,
+        )
+        return JSONResponse(
+            status_code=exc.status_code,
+            content=envelope.model_dump(mode="json"),
+        )
+
+    @app.exception_handler(Exception)
+    async def generic_error_handler(
+        request: Request,
+        exc: Exception,
+    ) -> JSONResponse:
+        envelope = error_response(exc, request)
+        return JSONResponse(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            content=envelope.model_dump(mode="json"),
         )
 
     # --- admin (Django /admin equivalent) -------------------------------------

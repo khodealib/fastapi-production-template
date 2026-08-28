@@ -8,7 +8,7 @@ from uuid import UUID
 
 from pydantic import EmailStr, Field, field_validator
 
-from ...core.schemas import CustomModel
+from ...core.schemas import CustomModel, Envelope, EnvelopeList
 
 STRONG_PASSWORD_RE = re.compile(r"^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^\w\s]).+$")
 
@@ -51,3 +51,9 @@ class RefreshRequest(CustomModel):
 class TokenData(CustomModel):
     sub: UUID
     type: str
+
+
+# Envelope type aliases for response_model
+UserReadEnvelope = Envelope[UserRead]
+TokenResponseEnvelope = Envelope[TokenResponse]
+UserListEnvelope = EnvelopeList[UserRead]
