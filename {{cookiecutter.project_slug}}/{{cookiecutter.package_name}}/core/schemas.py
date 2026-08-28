@@ -29,11 +29,6 @@ class CustomModel(BaseModel):
         return cast("dict[str, Any]", jsonable_encoder(self.model_dump(**kwargs)))
 
 
-class Message(CustomModel):
-    code: str
-    message: str
-
-
 class ErrorDetail(CustomModel):
     """Structured error detail for envelope responses."""
 
