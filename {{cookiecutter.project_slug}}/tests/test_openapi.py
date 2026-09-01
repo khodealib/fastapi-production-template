@@ -108,3 +108,44 @@ async def test_openapi_title_comes_from_settings(client: AsyncClient) -> None:
     assert info["title"] == get_settings().APP_NAME
     assert "Fixture" not in info["title"]
     assert "Fixture" not in info["description"]
+
+
+def test_rate_limit_example_matches_a_real_response() -> None:
+    """The 429 example is rendered from an actual RateLimitedError instance."""
+    responses = error_responses(RateLimitedError)
+    example = responses[429]["content"]["application/json"]["examples"]
+    detail = example["rate_limited"]["value"]["errors"][0]
+
+    assert detail["code"] == "rate_limited"
+    assert detail["message"] == RateLimitedError().message
+    assert detail["data"] == {"retry_after": RateLimitedError().retry_after}
+
+
+def test_rate_limit_response_documents_the_retry_after_header() -> None:
+    headers = error_responses(RateLimitedError)[429]["headers"]
+    assert "Retry-After" in headers
+    assert headers["Retry-After"]["schema"]["type"] == "string"
+
+
+def test_errors_without_a_default_constructor_still_document() -> None:
+    class NeedsArgs(AppError):
+        """This one cannot be sampled."""
+
+        status_code = 418
+        code = "needs_args"
+
+        def __init__(self, required: str) -> None:
+            super().__init__(required)
+
+    responses = error_responses(NeedsArgs)
+    detail = responses[418]["content"]["application/json"]["examples"]["needs_args"]
+    assert detail["value"]["errors"][0]["message"] == "This one cannot be sampled."
+
+
+async def test_openapi_documents_the_rate_limit_header(client: AsyncClient) -> None:
+    resp = await client.get("/openapi.json")
+    limited = resp.json()["paths"]["/api/auth/token"]["post"]["responses"]["429"]
+
+    assert "Retry-After" in limited["headers"]
+    example = limited["content"]["application/json"]["examples"]["rate_limited"]
+    assert example["value"]["errors"][0]["data"]["retry_after"] > 0
