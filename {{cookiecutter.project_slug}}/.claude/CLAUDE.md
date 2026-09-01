@@ -21,6 +21,33 @@ make docs         # Build Sphinx docs (en + fa_IR)
 make docs-live    # Live-reload docs server
 ```
 
+## Model Routing
+
+Classify the task first, then run the matching pipeline. The agents in
+`.claude/agents/` each pin their own model, so the tier is enforced once the
+work is delegated.
+
+| Task | Pipeline |
+|---|---|
+| Simple — typo, docstring, local rename, "where is X" | `quick` (Haiku) |
+| Normal coding — a contained feature or fix in one module | implement directly (Sonnet) |
+| Complex coding | `planner` → `implementer` → `reviewer` |
+| Architecture, database, security, performance, breaking change | `planner` → `implementer` → `reviewer` |
+| Critical or high-risk | `planner` → `implementer` → `reviewer` → `implementer` (fixes) → `reviewer` (final verification) |
+
+- When a task sits between two rows, take the higher one.
+- **A change to a response shape, a status code, an error code, a query
+  parameter, or a settings name is a breaking change**, however small the diff —
+  a client is parsing it.
+- Critical means expensive to undo or hard to notice: auth, the rate limiter,
+  migrations, the exception handlers, anything touching another user's data.
+- `planner` and `reviewer` are read-only by design. Route their output to
+  `implementer` rather than asking them to edit.
+- If the review returns findings, the fix round is part of the pipeline, not
+  optional follow-up.
+- The session's own model is chosen by the user and cannot be switched
+  mid-task. This table routes work to agents that pin theirs.
+
 ## Architecture
 
 Feature-based modules under `{{ cookiecutter.package_name }}/modules/`. Each module follows:

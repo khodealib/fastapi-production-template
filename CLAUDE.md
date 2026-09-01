@@ -131,6 +131,38 @@ A change to the generated app usually touches more than one file:
 - Docs text change → re-run `make docs-translate` so `fa_IR` `.po` files pick up
   the new strings
 
+## Model Routing
+
+Classify the task first, then run the matching pipeline. The agents live in
+`.claude/agents/` and each pins its own model, so the tier is enforced once the
+work is delegated — what this policy decides is which pipeline to enter.
+
+| Task | Pipeline |
+|---|---|
+| Simple — typo, docstring, local rename, "where is X" | `quick` (Haiku) |
+| Normal coding — a contained feature or fix in one area | implement directly (Sonnet) |
+| Complex coding | `planner` → `implementer` → `reviewer` |
+| Architecture, database, security, performance, breaking change | `planner` → `implementer` → `reviewer` |
+| Critical or high-risk | `planner` → `implementer` → `reviewer` → `implementer` (fixes) → `reviewer` (final verification) |
+
+Rules for the classification itself:
+
+- When a task sits between two rows, take the higher one. Misjudging a breaking
+  change as normal coding costs far more than one extra review pass.
+- **Anything that changes a response shape, a settings name, an exception code,
+  a query parameter, or `cookiecutter.json` is a breaking change**, however
+  small the diff. Every generated project inherits it.
+- A change is critical when getting it wrong is expensive to undo or hard to
+  notice: auth, the rate limiter, migrations, the exception handlers, or
+  anything a client parses.
+- `planner` and `reviewer` are read-only by design. Do not ask them to edit;
+  route their output to `implementer`.
+- The review is not a formality. If it returns findings, the fix round is part
+  of the pipeline, not optional follow-up work.
+- The session's own model is chosen by the user and cannot be switched
+  mid-task. This table routes work to agents that pin theirs; it does not
+  reassign the top-level session.
+
 ## Commit Convention
 
 All commits MUST follow [Conventional Commits](https://www.conventionalcommits.org/):

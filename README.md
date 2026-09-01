@@ -34,8 +34,9 @@ uv run --from cookiecutter cookiecutter .
 ├── pyproject.toml              # uv + ruff/mypy/pytest config
 ├── Makefile                    # dev commands
 ├── Dockerfile docker-compose.yml .env.example alembic.ini
-├── .claude/                    # Claude AI instructions + skills
+├── .claude/                    # Claude AI instructions, agents + skills
 │   ├── CLAUDE.md
+│   ├── agents/
 │   └── skills/
 ├── {package_name}/
 │   ├── api.py                  # central router
@@ -87,7 +88,7 @@ uv run pytest -v
 
 All four must pass with zero errors.
 
-## Claude AI Skills
+## Claude AI Configuration
 
 The generated project includes `.claude/skills/` with templates for:
 
@@ -95,3 +96,17 @@ The generated project includes `.claude/skills/` with templates for:
 - **sqlalchemy-model** — ORM model patterns
 - **pytest-async-test** — async test stubs
 - **pydantic-schema** — request/response schemas
+
+…and `.claude/agents/` with a model-routing pipeline, each agent pinned to the
+model its role warrants:
+
+| Agent | Model | Role |
+|---|---|---|
+| `quick` | Haiku | trivial single-file edits |
+| `planner` | Opus | designs the change, read-only |
+| `implementer` | Sonnet | writes the approved plan |
+| `reviewer` | Opus | reviews the result, read-only |
+
+Complex, architectural, security, performance and breaking changes run
+plan → implement → review; critical ones add a fix round and a final
+verification pass. The routing table is in `CLAUDE.md`.
