@@ -5,7 +5,8 @@ from __future__ import annotations
 import asyncio
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, Response, status
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ...infrastructure.cache import get_redis
@@ -31,6 +32,32 @@ async def live() -> LiveResponse:
     return LiveResponse(status="alive")
 
 
+async def _run_checks(session: AsyncSession) -> tuple[dict[str, CheckStatus], bool]:
+    """Run all dependency checks concurrently; return results and overall health."""
+    db_result, redis_result = await asyncio.gather(
+        check_database(session),
+        check_redis(get_redis()),
+    )
+    checks = {
+        "database": CheckStatus(status=db_result.status, detail=db_result.detail),
+        "redis": CheckStatus(status=redis_result.status, detail=redis_result.detail),
+    }
+    return checks, all(c.status == "ok" for c in checks.values())
+
+
+def _unavailable(payload: ReadyResponse | HealthResponse) -> JSONResponse:
+    """503 with the probe body verbatim.
+
+    Deliberately a plain JSONResponse rather than ``raise HTTPException``: these probes
+    sit outside the response envelope, and routing them through the app's exception
+    handlers would re-wrap them (and fail, since ``ErrorDetail.message`` is a ``str``).
+    """
+    return JSONResponse(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        content=payload.model_dump(mode="json"),
+    )
+
+
 @health_router.get(
     "/ready",
     response_model=ReadyResponse,
@@ -38,7 +65,7 @@ async def live() -> LiveResponse:
 )
 async def ready(
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> ReadyResponse:
+) -> ReadyResponse | Response:
     """Readiness probe.
 
     Returns 200 if all critical dependencies are available.
@@ -48,30 +75,9 @@ async def ready(
     - PostgreSQL (always required)
     - Redis (if configured via REDIS_URL)
     """
-    redis = get_redis()
-
-    # Run checks concurrently
-    db_result, redis_result = await asyncio.gather(
-        check_database(session),
-        check_redis(redis),
-    )
-
-    checks: dict[str, CheckStatus] = {
-        "database": CheckStatus(status=db_result.status, detail=db_result.detail),
-        "redis": CheckStatus(status=redis_result.status, detail=redis_result.detail),
-    }
-
-    all_ok = all(c.status == "ok" for c in checks.values())
-
+    checks, all_ok = await _run_checks(session)
     if not all_ok:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=ReadyResponse(
-                status="not_ready",
-                checks=checks,
-            ).model_dump(mode="json"),
-        )
-
+        return _unavailable(ReadyResponse(status="not_ready", checks=checks))
     return ReadyResponse(status="ready", checks=checks)
 
 
@@ -82,7 +88,7 @@ async def ready(
 )
 async def health(
     session: Annotated[AsyncSession, Depends(get_session)],
-) -> HealthResponse:
+) -> HealthResponse | Response:
     """Detailed health status.
 
     Returns 200 if healthy, 503 if unhealthy.
@@ -90,31 +96,12 @@ async def health(
     """
     from {{ cookiecutter.package_name }} import __version__
 
-    redis = get_redis()
-
-    # Run checks concurrently
-    db_result, redis_result = await asyncio.gather(
-        check_database(session),
-        check_redis(redis),
-    )
-
-    checks: dict[str, CheckStatus] = {
-        "database": CheckStatus(status=db_result.status, detail=db_result.detail),
-        "redis": CheckStatus(status=redis_result.status, detail=redis_result.detail),
-    }
-
-    all_ok = all(c.status == "ok" for c in checks.values())
-
+    checks, all_ok = await _run_checks(session)
     response = HealthResponse(
         status="healthy" if all_ok else "unhealthy",
         checks=checks,
         version=__version__,
     )
-
     if not all_ok:
-        raise HTTPException(
-            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=response.model_dump(mode="json"),
-        )
-
+        return _unavailable(response)
     return response
