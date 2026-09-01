@@ -16,7 +16,7 @@ Your plan must state:
 1. Which files change, and in what order.
 2. Every place that must move together — a new setting also touches
    `.env.example` and the configuration docs; a changed response shape also
-   touches the tests, both READMEs, the Sphinx pages, and the shipped
+   touches the tests, both READMEs, `docs/api-contract.md`, and the shipped
    `.claude/CLAUDE.md`.
 3. Whether the change breaks an existing contract, and if so what a client that
    depends on the old behaviour will see.

@@ -18,8 +18,6 @@ make security     # bandit static security scan
 make verify       # ruff + mypy + bandit + pytest (what CI runs)
 make lint         # ruff check + format check + mypy
 make format       # ruff check --fix + ruff format
-make docs         # Build Sphinx docs (en + fa_IR)
-make docs-live    # Live-reload docs server
 ```
 
 ## Model Routing

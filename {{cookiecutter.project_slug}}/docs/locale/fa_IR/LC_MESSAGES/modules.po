@@ -1,9 +1,0 @@
-# Persian (Iran) translations for API reference.
-msgid ""
-msgstr ""
-"Project-Id-Version: {{ cookiecutter.project_name }} 0.1.0\n"
-"Language: fa_IR\n"
-
-#: docs/api/modules.rst:4
-msgid "Users Module"
-msgstr "ماژول کاربران"

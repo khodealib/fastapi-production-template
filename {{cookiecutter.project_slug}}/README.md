@@ -45,8 +45,6 @@ make verify                 # ruff + mypy + pytest
 | `make security` | bandit static security scan |
 | `make format` | Auto-fix lint issues |
 | `make verify` | Full CI check (lint + security + test) |
-| `make docs` | Build Sphinx docs (en + fa_IR) |
-| `make docs-live` | Live-reload docs server |
 
 ## Architecture
 
@@ -244,10 +242,15 @@ All settings via environment variables (or `.env`):
 
 ## Documentation
 
-Build multi-language docs:
-```bash
-make docs          # builds en/ and fa_IR/
-make docs-live     # live-reload server
-```
+Plain Markdown in [`docs/`](docs/README.md) — no build step.
 
-Docs deploy automatically to GitHub Pages on push to `main`.
+| Page | For |
+|---|---|
+| [API Contract](docs/api-contract.md) | **Frontend and API consumers** — response envelope, error codes, pagination, auth, rate limiting |
+| [Installation](docs/installation.md) | Getting it running |
+| [Quickstart](docs/quickstart.md) | First requests against a live server |
+| [Configuration](docs/configuration.md) | Every environment variable |
+| [Architecture](docs/architecture.md) | Layout, layer rules, patterns |
+| [Adding Modules](docs/adding-modules.md) | Extending the service |
+
+The live API schema is at `/openapi.json`, browsable at `/docs`.

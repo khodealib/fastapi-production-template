@@ -15,7 +15,7 @@ and is full of Jinja placeholders that only resolve when a project is generated.
     ├── tests/  docs/  fixtures/  templates/
     ├── .claude/CLAUDE.md          # instructions shipped INTO generated projects
     └── .claude/skills/            # fastapi-route, sqlalchemy-model, pydantic-schema,
-                                   #   pytest-async-test, sphinx-docs
+                                   #   pytest-async-test, markdown-docs
 ```
 
 Two CLAUDE.md files, different audiences:
@@ -122,14 +122,14 @@ Only three rate-limit strategies are valid: `fixed-window`, `moving-window`,
 
 A change to the generated app usually touches more than one file:
 
-- New setting → `core/config.py`, `.env.example`, `docs/configuration.rst`
+- New setting → `core/config.py`, `.env.example`, `docs/configuration.md`
 - New module → `modules/<name>/`, `api.py`, `alembic/env.py` import,
-  `docs/api/modules.rst`, a test file
+  a test file
 - New make target → `Makefile`, template `README.md`, `.claude/CLAUDE.md`
 - Changed layout/conventions → `.claude/CLAUDE.md`, `.claude/skills/*.md`,
-  `docs/architecture.rst`, both READMEs
-- Docs text change → re-run `make docs-translate` so `fa_IR` `.po` files pick up
-  the new strings
+  `docs/architecture.md`, both READMEs
+- Anything a client can observe — a field, status code, error code, header, or
+  query parameter → `docs/api-contract.md`, in the same commit
 
 ## Model Routing
 
