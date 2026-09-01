@@ -44,6 +44,20 @@ jobs:
       - name: mypy
         run: uv run mypy --strict {{ cookiecutter.package_name }} tests
 
+  security:
+    name: Security Scan
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+        with:
+          enable-cache: true
+      - run: uv sync
+      # Through `uv run`, never `uvx`: bandit parses with the interpreter it
+      # runs on, and silently skips files it cannot parse while still exiting 0.
+      - name: bandit
+        run: uv run bandit -c pyproject.toml -q -r {{ cookiecutter.package_name }}
+
   # ---------------------------------------------------------------------------
   # Test
   # ---------------------------------------------------------------------------
@@ -96,7 +110,7 @@ jobs:
   docker:
     name: Docker Build
     runs-on: ubuntu-latest
-    needs: [lint, typecheck, test]
+    needs: [lint, typecheck, security, test]
     permissions:
       contents: read
       packages: write

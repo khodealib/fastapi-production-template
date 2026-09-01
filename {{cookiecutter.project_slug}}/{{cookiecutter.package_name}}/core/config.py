@@ -6,7 +6,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from .constants import Environment
 
-DEV_SECRET = "dev-insecure-secret-change-me"
+# A placeholder, not a credential: _guard_secret rejects it in production.
+DEV_SECRET = "dev-insecure-secret-change-me"  # nosec B105
 
 
 class Settings(BaseSettings):

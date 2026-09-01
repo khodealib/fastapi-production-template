@@ -20,6 +20,7 @@ Look for, in this order:
    without the shipped `.claude/CLAUDE.md` and skills.
 4. Whether the claimed verification actually ran, and against a generated
    fixture rather than the template in place.
+   A new `# nosec` is a claim to check, not a fix: is its justification true?
 5. Simplification only where it removes real duplication or a real risk.
 
 State each finding as one sentence plus the scenario. Rank by severity. Say

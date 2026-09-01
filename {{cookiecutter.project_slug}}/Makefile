@@ -1,4 +1,4 @@
-.PHONY: help install init dev up makemigrations migrate worker format lint test verify messages docs docs-live docs-gettext docs-translate docker-up docker-down docker-logs docker-restart
+.PHONY: help install init dev up makemigrations migrate worker format lint test security verify messages docs docs-live docs-gettext docs-translate docker-up docker-down docker-logs docker-restart
 
 help: # Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?# ' Makefile | awk 'BEGIN {FS = ":.*?# "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -36,7 +36,10 @@ lint: # Ruff + mypy
 test: # Run the test suite
 	uv run pytest
 
-verify: lint test # Everything a CI job would run
+security: # Static security scan (bandit)
+	uv run bandit -c pyproject.toml -q -r {{ cookiecutter.package_name }}
+
+verify: lint security test # Everything a CI job would run
 
 docs: # Build documentation (all languages)
 	uv pip install -r docs/requirements.txt

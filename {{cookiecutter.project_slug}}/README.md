@@ -42,8 +42,9 @@ make verify                 # ruff + mypy + pytest
 | `make makemigrations m="msg"` | Autogenerate migration |
 | `make test` | Run test suite |
 | `make lint` | ruff check + format check + mypy |
+| `make security` | bandit static security scan |
 | `make format` | Auto-fix lint issues |
-| `make verify` | Full CI check (lint + test) |
+| `make verify` | Full CI check (lint + security + test) |
 | `make docs` | Build Sphinx docs (en + fa_IR) |
 | `make docs-live` | Live-reload docs server |
 

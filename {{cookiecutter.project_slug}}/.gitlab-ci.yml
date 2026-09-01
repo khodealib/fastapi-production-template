@@ -39,6 +39,20 @@ typecheck:
     - if: $CI_COMMIT_BRANCH == "main"
     - if: $CI_COMMIT_BRANCH == "dev"
 
+security:
+  stage: lint
+  image: ghcr.io/astral-sh/uv:python{{ cookiecutter.python_version }}-bookworm
+  before_script:
+    - uv sync
+  # Through `uv run`, never `uvx`: bandit parses with the interpreter it runs
+  # on, and silently skips files it cannot parse while still exiting 0.
+  script:
+    - uv run bandit -c pyproject.toml -q -r {{ cookiecutter.package_name }}
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request_event"
+    - if: $CI_COMMIT_BRANCH == "main"
+    - if: $CI_COMMIT_BRANCH == "dev"
+
 # ---------------------------------------------------------------------------
 # Test
 # ---------------------------------------------------------------------------

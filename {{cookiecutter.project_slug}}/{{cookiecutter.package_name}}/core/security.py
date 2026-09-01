@@ -10,8 +10,10 @@ from .config import get_settings
 
 password_hash = PasswordHash.recommended()
 
-TOKEN_TYPE_ACCESS = "access"
-TOKEN_TYPE_REFRESH = "refresh"
+# JWT claim discriminators and the RFC 6749 scheme name — not secrets.
+TOKEN_TYPE_ACCESS = "access"  # nosec B105
+TOKEN_TYPE_REFRESH = "refresh"  # nosec B105
+TOKEN_SCHEME_BEARER = "bearer"  # nosec B105
 
 
 def hash_password(password: str) -> str:
@@ -75,6 +77,7 @@ def datetime_now_utc() -> datetime:
 
 
 __all__ = [
+    "TOKEN_SCHEME_BEARER",
     "TOKEN_TYPE_ACCESS",
     "TOKEN_TYPE_REFRESH",
     "InvalidTokenError",

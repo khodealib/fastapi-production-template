@@ -17,7 +17,9 @@ Look for, in this order:
    error documented by hand where it should come from the exception class?
 3. Security and data access: a route missing its permission dependency, a
    repository query without its ownership filter, a secret or token reaching a
-   log or a response.
+   log or a response
+   Treat a new `# nosec` as a claim to check: is the justification above it
+   true, and could the trigger be removed rather than silenced?
 4. Things that must move together and did not: a model without a migration, a
    setting without its `.env.example` entry, a new module without its Alembic
    import.

@@ -14,7 +14,8 @@ make migrate      # alembic upgrade head
 make makemigrations m="msg"   # autogenerate a migration
 make worker       # Celery worker
 make test         # pytest
-make verify       # ruff + mypy + pytest (what CI runs)
+make security     # bandit static security scan
+make verify       # ruff + mypy + bandit + pytest (what CI runs)
 make lint         # ruff check + format check + mypy
 make format       # ruff check --fix + ruff format
 make docs         # Build Sphinx docs (en + fa_IR)
@@ -158,6 +159,20 @@ are absent — don't "fix" them into envelopes.
 - To exercise a failing dependency through the full HTTP path, override it via
   `app.dependency_overrides` rather than mocking the check function
 - `filterwarnings = ["error"]` — a new warning fails the suite
+
+## Security scanning
+
+`make security` runs bandit over the package (tests are excluded — `assert`
+is their point). It must run through `uv run`, never `uvx`: bandit parses
+with whatever interpreter it runs on, and a file it cannot parse is **skipped
+silently while bandit still exits 0**. On an older interpreter that quietly
+means auth code goes unscanned and CI still passes.
+
+Suppress a false positive with a bare `# nosec BXXX` on the offending line
+and the justification as a normal comment above it — anything written after
+`nosec` is parsed as further test IDs, not as prose. Never skip a whole test
+globally; that hides the real cases too. Prefer removing the trigger: a magic
+string flagged as a password is usually better as a named constant.
 
 ## Adding a Module
 

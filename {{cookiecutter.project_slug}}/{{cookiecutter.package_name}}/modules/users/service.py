@@ -14,6 +14,7 @@ from uuid import UUID
 from ...core.config import get_settings
 from ...core.exceptions import ConflictError, UnauthorizedError
 from ...core.security import (
+    TOKEN_SCHEME_BEARER,
     TOKEN_TYPE_REFRESH,
     InvalidTokenError,
     create_access_token,
@@ -74,7 +75,7 @@ class IssueTokenPair:
         return {
             "access_token": access_token,
             "refresh_token": refresh_token,
-            "token_type": "bearer",
+            "token_type": TOKEN_SCHEME_BEARER,
             "expires_in": str(settings.JWT_ACCESS_TOKEN_EXPIRE_MINUTES * 60),
         }
 
