@@ -97,12 +97,12 @@ def paginated_response[T](
 ) -> EnvelopeList[T]:
     """Create a paginated list envelope response."""
     request_id = _get_request_id(request)
-    page_obj = Page.build(items, total, params)
-    meta = page_obj.to_envelope_meta(request_id)
+    page = Page.build(items, total, params)
     return EnvelopeList(
         success=True,
         data=items,
         message=message,
         errors=None,
-        meta=meta,
+        pagination=page.to_pagination(),
+        meta=EnvelopeMeta(request_id=request_id),
     )

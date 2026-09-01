@@ -49,7 +49,7 @@ def _envelope_example(detail: ErrorDetail) -> dict[str, Any]:
         "data": None,
         "message": detail.message,
         "errors": [detail.model_dump(mode="json")],
-        "meta": {"request_id": _EXAMPLE_REQUEST_ID, "pagination": None},
+        "meta": {"request_id": _EXAMPLE_REQUEST_ID},
     }
 
 

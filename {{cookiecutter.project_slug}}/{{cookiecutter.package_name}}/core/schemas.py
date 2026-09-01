@@ -50,27 +50,25 @@ class ErrorDetail(CustomModel):
     )
 
 
-class PaginationMeta(CustomModel):
-    """Pagination metadata for envelope responses."""
+class Pagination(CustomModel):
+    """Where a list response sits in the full result set.
+
+    A top-level member rather than part of ``meta``: it describes the payload,
+    not the request, and only list responses carry it.
+    """
 
     page: int = Field(examples=[1])
-    size: int = Field(examples=[20])
-    total: int = Field(examples=[42])
-    pages: int = Field(examples=[3])
+    per_page: int = Field(examples=[20])
+    total: int = Field(examples=[245])
+    total_pages: int = Field(examples=[13])
+    has_next: bool = Field(examples=[True])
+    has_previous: bool = Field(examples=[False])
 
 
 class EnvelopeMeta(CustomModel):
-    """Metadata for a single-resource envelope."""
+    """Metadata about the request itself, carried by every response."""
 
     request_id: str = Field(examples=["3f1a9c2e7b8d4f5a9e0c1b2d3a4f5e6c"])
-    pagination: PaginationMeta | None = Field(default=None, examples=[None])
-
-
-class PaginatedMeta(CustomModel):
-    """Metadata for a list envelope, where pagination is always present."""
-
-    request_id: str = Field(examples=["3f1a9c2e7b8d4f5a9e0c1b2d3a4f5e6c"])
-    pagination: PaginationMeta
 
 
 class Envelope[T](CustomModel):
@@ -90,4 +88,5 @@ class EnvelopeList[T](CustomModel):
     data: list[T]
     message: str | None = Field(default=None, examples=["Items retrieved"])
     errors: list[ErrorDetail] | None = Field(default=None, examples=[None])
-    meta: PaginatedMeta
+    pagination: Pagination
+    meta: EnvelopeMeta
