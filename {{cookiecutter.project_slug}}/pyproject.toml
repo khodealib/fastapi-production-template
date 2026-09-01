@@ -94,6 +94,11 @@ ignore = [
 "{{ cookiecutter.package_name }}/alembic/versions/*.py" = ["I", "UP", "SIM", "E501", "W"]
 "tests/*" = ["S101"]
 
+[tool.ruff.lint.isort]
+# Pin the app package as first-party so import order does not depend on how the
+# generated package name happens to sort against third-party distributions.
+known-first-party = ["{{ cookiecutter.package_name }}"]
+
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = [
     "sqlalchemy.orm.DeclarativeBase",

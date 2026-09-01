@@ -1,13 +1,11 @@
 """Application-wide base model with a predictable serialization contract."""
 
 from datetime import datetime
-from typing import Any, TypeVar
+from typing import Any, TypeVar, cast
 from zoneinfo import ZoneInfo
 
 from fastapi.encoders import jsonable_encoder
 from pydantic import BaseModel, ConfigDict, field_serializer
-
-from typing import cast
 
 T = TypeVar("T")
 

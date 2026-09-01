@@ -10,6 +10,7 @@ from sqlalchemy import func, select
 
 if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
+
     from .schemas import EnvelopeMeta
 
 
