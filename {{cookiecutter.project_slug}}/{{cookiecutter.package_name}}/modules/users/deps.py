@@ -14,7 +14,7 @@ from ...core.config import get_settings
 from ...core.database import get_session
 from ...core.exceptions import ForbiddenError, UnauthorizedError
 from ...core.security import TOKEN_TYPE_ACCESS, decode_token
-from .crud import UserRepository
+from .crud import RefreshTokenRepository, UserRepository
 from .models import User
 
 Session = Annotated[AsyncSession, Depends(get_session)]
@@ -24,9 +24,23 @@ oauth2_scheme = OAuth2PasswordBearer(
 )
 
 
+def get_user_repository(session: Session) -> UserRepository:
+    return UserRepository(session)
+
+
+def get_refresh_token_repository(session: Session) -> RefreshTokenRepository:
+    return RefreshTokenRepository(session)
+
+
+UserRepo = Annotated[UserRepository, Depends(get_user_repository)]
+RefreshTokenRepo = Annotated[
+    RefreshTokenRepository, Depends(get_refresh_token_repository)
+]
+
+
 async def get_current_user(
     token: Annotated[str, Depends(oauth2_scheme)],
-    session: Session,
+    user_repo: UserRepo,
 ) -> User:
     credentials_error = UnauthorizedError("Could not validate credentials.")
     try:
@@ -41,7 +55,7 @@ async def get_current_user(
     except TypeError, ValueError:
         raise credentials_error from None
 
-    user = await UserRepository(session).get_by_id(user_id)
+    user = await user_repo.get_by_id(user_id)
     if user is None or not user.is_active:
         raise credentials_error
     return user
