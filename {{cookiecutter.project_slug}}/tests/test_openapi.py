@@ -83,22 +83,35 @@ async def test_openapi_documents_probe_unavailability(client: AsyncClient) -> No
 async def test_success_response_documents_absent_error_fields(
     client: AsyncClient,
 ) -> None:
-    """A 200 example must not invent an error object or pagination block."""
+    """A 200 example must not invent an error object, nor carry pagination."""
     resp = await client.get("/openapi.json")
     schemas = resp.json()["components"]["schemas"]
 
-    assert schemas["Envelope_UserRead_"]["properties"]["errors"]["examples"] == [None]
-    assert schemas["EnvelopeMeta"]["properties"]["pagination"]["examples"] == [None]
+    envelope = schemas["Envelope_UserRead_"]
+    assert envelope["properties"]["errors"]["examples"] == [None]
+    assert "pagination" not in envelope["properties"]
+    assert list(schemas["EnvelopeMeta"]["properties"]) == ["request_id"]
 
 
-async def test_list_response_always_documents_pagination(client: AsyncClient) -> None:
-    """A list envelope always carries pagination, so it is required there."""
+async def test_list_response_documents_pagination_at_the_root(
+    client: AsyncClient,
+) -> None:
+    """Pagination is a top-level member of a list response, not metadata."""
     resp = await client.get("/openapi.json")
     schemas = resp.json()["components"]["schemas"]
 
-    meta = schemas["EnvelopeList_UserRead_"]["properties"]["meta"]
-    assert meta["$ref"].endswith("PaginatedMeta")
-    assert "pagination" in schemas["PaginatedMeta"]["required"]
+    envelope = schemas["EnvelopeList_UserRead_"]
+    assert "pagination" in envelope["required"]
+    assert envelope["properties"]["pagination"]["$ref"].endswith("Pagination")
+
+    assert sorted(schemas["Pagination"]["properties"]) == [
+        "has_next",
+        "has_previous",
+        "page",
+        "per_page",
+        "total",
+        "total_pages",
+    ]
 
 
 async def test_openapi_title_comes_from_settings(client: AsyncClient) -> None:

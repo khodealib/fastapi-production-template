@@ -193,7 +193,12 @@ async def test_users_list_requires_superuser(
     body = resp.json()
     assert body["success"] is True
     assert len(body["data"]) == 2
-    assert body["meta"]["pagination"]["total"] == 2
+    assert body["pagination"]["total"] == 2
+    assert body["pagination"]["per_page"] == 20
+    assert body["pagination"]["total_pages"] == 1
+    assert body["pagination"]["has_next"] is False
+    assert body["pagination"]["has_previous"] is False
+    assert "pagination" not in body["meta"]
     assert body["message"] == "Users retrieved"
 
 
