@@ -57,6 +57,21 @@ def get_rate_limiter(uri: str, strategy: RateLimitStrategy) -> _LimitsRateLimite
     return cls(storage)
 
 
+def _parse_strategy(value: str) -> RateLimitStrategy:
+    """Resolve RATE_LIMIT_STRATEGY, naming the valid options when it's wrong.
+
+    This runs at import time (route decoration), so a bare ValueError here would
+    surface as an unimportable app with no hint at the cause.
+    """
+    try:
+        return RateLimitStrategy(value)
+    except ValueError as exc:
+        valid = ", ".join(s.value for s in RateLimitStrategy)
+        raise ValueError(
+            f"Invalid RATE_LIMIT_STRATEGY {value!r}. Valid options: {valid}."
+        ) from exc
+
+
 def _scope_by_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
@@ -74,7 +89,7 @@ def rate_limit(
     stashed on ``request.state.rate_limit`` for RateLimitHeadersMiddleware.
     """
     settings = get_settings()
-    strategy = strategy or RateLimitStrategy(settings.RATE_LIMIT_STRATEGY)
+    strategy = strategy or _parse_strategy(settings.RATE_LIMIT_STRATEGY)
     rate = limits.parse(item)
 
     async def dependency(request: Request) -> None:
