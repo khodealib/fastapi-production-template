@@ -43,9 +43,7 @@ def register_exception_handlers(app: FastAPI) -> None:
             for err in exc.errors()
         ]
         envelope = validation_error_response(errors, request=request)
-        return JSONResponse(
-            status_code=422, content=envelope.model_dump(mode="json")
-        )
+        return JSONResponse(status_code=422, content=envelope.model_dump(mode="json"))
 
     @app.exception_handler(StarletteHTTPException)
     async def http_exception_handler(
@@ -68,6 +66,4 @@ def register_exception_handlers(app: FastAPI) -> None:
     @app.exception_handler(Exception)
     async def generic_error_handler(request: Request, exc: Exception) -> JSONResponse:
         envelope = error_response(exc, request)
-        return JSONResponse(
-            status_code=500, content=envelope.model_dump(mode="json")
-        )
+        return JSONResponse(status_code=500, content=envelope.model_dump(mode="json"))

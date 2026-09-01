@@ -17,8 +17,10 @@ class AdminAuth(AuthenticationBackend):
         password = str(form.get("password", ""))
         async with SessionFactory() as session:
             user = await UserRepository(session).get_by_email(username)
-            if user and user.is_superuser and verify_password(
-                password, user.hashed_password
+            if (
+                user
+                and user.is_superuser
+                and verify_password(password, user.hashed_password)
             ):
                 request.session.update({"user_id": str(user.id)})
                 return True

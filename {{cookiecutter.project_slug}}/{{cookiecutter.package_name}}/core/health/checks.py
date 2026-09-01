@@ -46,8 +46,9 @@ async def check_database(session: AsyncSession, timeout: float = 2.0) -> CheckRe
         return CheckResult(name="database", status="failed", detail=f"unexpected: {e}")
 
 
-async def check_redis(  # noqa: ASYNC109
-    redis: Redis | None, timeout: float = 2.0
+async def check_redis(
+    redis: Redis | None,
+    timeout: float = 2.0,  # noqa: ASYNC109
 ) -> CheckResult:
     """Check Redis connectivity with PING.
 
