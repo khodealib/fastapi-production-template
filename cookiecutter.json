@@ -11,11 +11,8 @@
     "_copy_without_render": [
         "*.html",
         ".gitignore",
-        ".github/**",
-        ".gitlab-ci.yml",
         ".pre-commit-config.yaml",
         "**/locales/**",
-        "templates/**",
-        "docs/**/*.po"
+        "templates/**"
     ]
 }

@@ -16,7 +16,7 @@ cache:
 # ---------------------------------------------------------------------------
 lint:
   stage: lint
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  image: ghcr.io/astral-sh/uv:python{{ cookiecutter.python_version }}-bookworm
   before_script:
     - uv sync
   script:
@@ -29,7 +29,7 @@ lint:
 
 typecheck:
   stage: lint
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  image: ghcr.io/astral-sh/uv:python{{ cookiecutter.python_version }}-bookworm
   before_script:
     - uv sync
   script:
@@ -44,7 +44,7 @@ typecheck:
 # ---------------------------------------------------------------------------
 test:
   stage: test
-  image: ghcr.io/astral-sh/uv:python3.12-bookworm
+  image: ghcr.io/astral-sh/uv:python{{ cookiecutter.python_version }}-bookworm
   services:
     - name: postgres:16
       alias: db
