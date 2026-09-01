@@ -84,6 +84,9 @@ touch a repository's session directly, services never import FastAPI.
   - `paginated_response(items, total, params, message, request)` — lists
   - `error_response(exc, request)` — errors (auto-handled by exception handlers)
   - `validation_error_response(errors, message, request)` — 422 validation
+- `meta` carries only facts about the request (`request_id`). Pagination is a
+  **top-level** member of `EnvelopeList[T]` — it describes the payload, and
+  only list responses have one
 - Response models: `Envelope[T]`, `EnvelopeList[T]` from `core.schemas`; declare
   an alias per schema (`UserReadEnvelope = Envelope[UserRead]`) and use it as
   `response_model`

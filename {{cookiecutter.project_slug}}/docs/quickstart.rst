@@ -27,7 +27,7 @@ After installation, you can:
         },
         "message": "User registered successfully",
         "errors": null,
-        "meta": { "request_id": "...", "pagination": null }
+        "meta": { "request_id": "..." }
       }
 
 2. **Login**
@@ -52,7 +52,7 @@ After installation, you can:
         },
         "message": "Login successful",
         "errors": null,
-        "meta": { "request_id": "...", "pagination": null }
+        "meta": { "request_id": "..." }
       }
 
 3. **Access protected endpoints**
@@ -78,7 +78,7 @@ After installation, you can:
         },
         "message": "Current user retrieved",
         "errors": null,
-        "meta": { "request_id": "...", "pagination": null }
+        "meta": { "request_id": "..." }
       }
 
 4. **Check health**
@@ -100,7 +100,7 @@ After installation, you can:
         },
         "message": "Service is healthy",
         "errors": null,
-        "meta": { "request_id": "...", "pagination": null }
+        "meta": { "request_id": "..." }
       }
 
 5. **List users (superuser only)**
@@ -122,8 +122,13 @@ After installation, you can:
         ],
         "message": "Users retrieved",
         "errors": null,
-        "meta": {
-          "request_id": "...",
-          "pagination": { "page": 1, "size": 20, "total": 2, "pages": 1 }
-        }
+        "pagination": {
+          "page": 1,
+          "per_page": 20,
+          "total": 2,
+          "total_pages": 1,
+          "has_next": false,
+          "has_previous": false
+        },
+        "meta": { "request_id": "..." }
       }

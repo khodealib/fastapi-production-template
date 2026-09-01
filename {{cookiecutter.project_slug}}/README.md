@@ -144,7 +144,7 @@ All endpoints return a consistent envelope structure:
   "data": { "id": "...", "email": "..." },
   "message": "User created successfully",
   "errors": null,
-  "meta": { "request_id": "abc123", "pagination": null }
+  "meta": { "request_id": "abc123" }
 }
 ```
 
@@ -155,10 +155,15 @@ All endpoints return a consistent envelope structure:
   "data": [{ "id": "..." }, { "id": "..." }],
   "message": "Users retrieved",
   "errors": null,
-  "meta": {
-    "request_id": "abc123",
-    "pagination": { "page": 1, "size": 20, "total": 100, "pages": 5 }
-  }
+  "pagination": {
+    "page": 1,
+    "per_page": 20,
+    "total": 100,
+    "total_pages": 5,
+    "has_next": true,
+    "has_previous": false
+  },
+  "meta": { "request_id": "abc123" }
 }
 ```
 
@@ -169,7 +174,7 @@ All endpoints return a consistent envelope structure:
   "data": null,
   "message": "User not found",
   "errors": [{ "code": "not_found", "message": "User not found", "field": null }],
-  "meta": { "request_id": "abc123", "pagination": null }
+  "meta": { "request_id": "abc123" }
 }
 ```
 
@@ -180,7 +185,7 @@ All endpoints return a consistent envelope structure:
   "data": null,
   "message": "Validation failed",
   "errors": [{ "code": "validation_error", "message": "Invalid email", "field": "email" }],
-  "meta": { "request_id": "abc123", "pagination": null }
+  "meta": { "request_id": "abc123" }
 }
 ```
 
@@ -192,7 +197,8 @@ All endpoints return a consistent envelope structure:
 | `data` | object/array/null | Response payload on success |
 | `message` | string/null | Human-readable summary |
 | `errors` | array/null | Structured error details on failure |
-| `meta` | object | Request metadata (request_id, pagination) |
+| `pagination` | object | List responses only: page, per_page, total, total_pages, has_next, has_previous |
+| `meta` | object | Request metadata (request_id) |
 
 HTTP status codes remain accurate (200, 201, 400, 401, 404, 409, 422, 500).
 

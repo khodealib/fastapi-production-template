@@ -54,13 +54,16 @@ All endpoints return a consistent envelope (see :doc:`quickstart` for examples):
      "data": {},
      "message": "Operation completed",
      "errors": null,
-     "meta": { "request_id": "...", "pagination": {...} }
+     "pagination": {...},          // list responses only
+     "meta": { "request_id": "..." }
    }
 
 - ``success``: Boolean for easy client-side branching
 - ``data``: Payload (object/array) — null on error
 - ``message``: Human-readable summary — optional on success, required on error
 - ``errors``: Array of ``ErrorDetail`` — null on success
-- ``meta``: Metadata (request_id, pagination, tracing)
+- ``pagination``: Present on list responses only — page, per_page, total,
+  total_pages, has_next, has_previous
+- ``meta``: Metadata about the request itself (request_id, tracing)
 
 HTTP status codes remain accurate (200, 201, 400, 401, 404, 409, 422, 500).

@@ -35,7 +35,7 @@ Response Models
 .. autoclass:: {{ cookiecutter.package_name }}.core.schemas.EnvelopeMeta
    :members:
 
-.. autoclass:: {{ cookiecutter.package_name }}.core.schemas.PaginationMeta
+.. autoclass:: {{ cookiecutter.package_name }}.core.schemas.Pagination
    :members:
 
 .. autoclass:: {{ cookiecutter.package_name }}.modules.users.schemas.UserReadEnvelope
