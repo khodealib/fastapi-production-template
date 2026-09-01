@@ -35,13 +35,18 @@ class CustomModel(BaseModel):
 class ErrorDetail(CustomModel):
     """Structured error detail for envelope responses."""
 
-    code: str = Field(examples=["not_found"])
-    message: str = Field(examples=["The requested resource does not exist."])
-    field: str | None = Field(default=None, examples=["body.email"])
+    code: str
+    message: str
+    field: str | None = Field(
+        default=None,
+        description=(
+            "Dotted path to the offending input on a validation error, "
+            "e.g. ``body.email`` or ``query.page``."
+        ),
+    )
     data: dict[str, Any] | None = Field(
         default=None,
         description="Context an error attached via ``AppError(extra=...)``.",
-        examples=[{"retry_after": 30}],
     )
 
 
@@ -55,10 +60,17 @@ class PaginationMeta(CustomModel):
 
 
 class EnvelopeMeta(CustomModel):
-    """Metadata for envelope responses."""
+    """Metadata for a single-resource envelope."""
 
     request_id: str = Field(examples=["3f1a9c2e7b8d4f5a9e0c1b2d3a4f5e6c"])
-    pagination: PaginationMeta | None = None
+    pagination: PaginationMeta | None = Field(default=None, examples=[None])
+
+
+class PaginatedMeta(CustomModel):
+    """Metadata for a list envelope, where pagination is always present."""
+
+    request_id: str = Field(examples=["3f1a9c2e7b8d4f5a9e0c1b2d3a4f5e6c"])
+    pagination: PaginationMeta
 
 
 class Envelope[T](CustomModel):
@@ -67,7 +79,7 @@ class Envelope[T](CustomModel):
     success: bool = Field(examples=[True])
     data: T | None = None
     message: str | None = Field(default=None, examples=["Operation successful"])
-    errors: list[ErrorDetail] | None = None
+    errors: list[ErrorDetail] | None = Field(default=None, examples=[None])
     meta: EnvelopeMeta
 
 
@@ -77,5 +89,5 @@ class EnvelopeList[T](CustomModel):
     success: bool = Field(examples=[True])
     data: list[T]
     message: str | None = Field(default=None, examples=["Items retrieved"])
-    errors: list[ErrorDetail] | None = None
-    meta: EnvelopeMeta
+    errors: list[ErrorDetail] | None = Field(default=None, examples=[None])
+    meta: PaginatedMeta

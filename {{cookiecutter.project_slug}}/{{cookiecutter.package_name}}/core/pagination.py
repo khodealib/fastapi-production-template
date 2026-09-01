@@ -11,7 +11,7 @@ from sqlalchemy import func, select
 if TYPE_CHECKING:
     from sqlalchemy.sql.selectable import Select
 
-    from .schemas import EnvelopeMeta
+    from .schemas import PaginatedMeta
 
 
 @dataclass
@@ -46,11 +46,11 @@ class Page[T]:
             pages=(total + size - 1) // size,
         )
 
-    def to_envelope_meta(self, request_id: str) -> EnvelopeMeta:
-        """Convert pagination info to envelope metadata."""
-        from .schemas import EnvelopeMeta, PaginationMeta
+    def to_envelope_meta(self, request_id: str) -> PaginatedMeta:
+        """Convert pagination info to list-envelope metadata."""
+        from .schemas import PaginatedMeta, PaginationMeta
 
-        return EnvelopeMeta(
+        return PaginatedMeta(
             request_id=request_id,
             pagination=PaginationMeta(
                 page=self.page,

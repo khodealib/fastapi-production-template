@@ -68,9 +68,7 @@ def error_responses(
             descriptions.append(VALIDATION_DESCRIPTION)
             examples[VALIDATION_CODE] = {
                 "summary": VALIDATION_CODE,
-                "value": _example(
-                    VALIDATION_CODE, "Field required", field="body.email"
-                ),
+                "value": _example(VALIDATION_CODE, "Field required"),
             }
         responses[status_code] = {
             "model": Envelope[None],
