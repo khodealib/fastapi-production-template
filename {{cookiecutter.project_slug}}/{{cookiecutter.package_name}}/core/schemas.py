@@ -38,6 +38,11 @@ class ErrorDetail(CustomModel):
     code: str = Field(examples=["not_found"])
     message: str = Field(examples=["The requested resource does not exist."])
     field: str | None = Field(default=None, examples=["body.email"])
+    data: dict[str, Any] | None = Field(
+        default=None,
+        description="Context an error attached via ``AppError(extra=...)``.",
+        examples=[{"retry_after": 30}],
+    )
 
 
 class PaginationMeta(CustomModel):

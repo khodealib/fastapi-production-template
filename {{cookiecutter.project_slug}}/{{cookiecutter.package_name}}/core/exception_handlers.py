@@ -27,7 +27,9 @@ def register_exception_handlers(app: FastAPI) -> None:
     async def app_error_handler(request: Request, exc: AppError) -> JSONResponse:
         envelope = error_response(exc, request)
         return JSONResponse(
-            status_code=exc.status_code, content=envelope.model_dump(mode="json")
+            status_code=exc.status_code,
+            content=envelope.model_dump(mode="json"),
+            headers=exc.response_headers() or None,
         )
 
     @app.exception_handler(RequestValidationError)

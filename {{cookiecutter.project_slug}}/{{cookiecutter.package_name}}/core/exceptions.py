@@ -27,7 +27,15 @@ class AppError(Exception):
 
     def to_error_detail(self) -> ErrorDetail:
         """Convert to structured error detail for envelope."""
-        return ErrorDetail(code=self.code, message=self.message)
+        return ErrorDetail(
+            code=self.code,
+            message=self.message,
+            data=self.extra or None,
+        )
+
+    def response_headers(self) -> dict[str, str]:
+        """HTTP headers this error must carry (e.g. ``Retry-After``)."""
+        return {}
 
     def to_envelope(
         self, request_id: str, meta: EnvelopeMeta | None = None
@@ -91,3 +99,6 @@ class RateLimitedError(AppError):
             message or "Too many requests, slow down.",
             extra={"retry_after": retry_after},
         )
+
+    def response_headers(self) -> dict[str, str]:
+        return {"Retry-After": str(self.retry_after)}
