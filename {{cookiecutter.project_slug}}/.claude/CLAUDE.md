@@ -1,12 +1,20 @@
 # {{ cookiecutter.project_name }}
 
+FastAPI service on Python {{ cookiecutter.python_version }}, managed with `uv`.
+Strict `ruff` + `mypy --strict` + `pytest` — `make verify` must stay green.
+
 ## Commands
 
 ```bash
-make dev          # Run dev server with reload
-make migrate      # Apply DB migrations
-make test         # Run test suite
-make verify       # ruff + mypy + pytest
+make install      # uv sync
+make init         # create .env from .env.example
+make up           # start postgres + redis (docker compose)
+make dev          # dev server with reload → /docs, /admin
+make migrate      # alembic upgrade head
+make makemigrations m="msg"   # autogenerate a migration
+make worker       # Celery worker
+make test         # pytest
+make verify       # ruff + mypy + pytest (what CI runs)
 make lint         # ruff check + format check + mypy
 make format       # ruff check --fix + ruff format
 make docs         # Build Sphinx docs (en + fa_IR)
@@ -15,29 +23,71 @@ make docs-live    # Live-reload docs server
 
 ## Architecture
 
-Feature-based modules under `modules/`. Each module follows:
-- `routes.py` → HTTP layer (no DB logic)
+Feature-based modules under `{{ cookiecutter.package_name }}/modules/`. Each module follows:
+- `routes.py` → HTTP layer (thin; no DB or business logic)
 - `service.py` → use cases (classes with `execute()`)
 - `crud.py` → repository adapters (data access only)
 - `models.py` → SQLAlchemy ORM entities
 - `schemas.py` → Pydantic API boundaries
 - `deps.py` → FastAPI dependencies
-- `interactor.py` → multi-usecase orchestration
+- `admin.py` → SQLAdmin `ModelView`s + `register_admin()`
 
-`core/` holds cross-cutting: config, database, security, exceptions, health, **response helpers**.
+`core/` holds cross-cutting: config, database, security, exceptions, pagination,
+health, **response helpers**.
 `infrastructure/` holds external integrations: cache, email, i18n, rate limiting, tasks.
+`main.py` is the app factory (`create_app()`); `api.py` mounts every module router.
+
+Dependency direction is one-way: `routes → service → crud → models`. Routes never
+touch a repository's session directly, services never import FastAPI.
 
 ## Conventions
 
 - Session type: `Session = Annotated[AsyncSession, Depends(get_session)]`
-- Use cases are classes with `execute()` method
-- Repositories wrap `AsyncSession`, no business logic
-- Rate limiting via `rate_limit("5/minute", key_prefix="login")` dependency
-- Errors inherit from `AppError` with status_code and code
-- **All responses use envelope pattern** — see `core.response` helpers:
+- Use cases are classes with an `execute()` method
+- Repositories wrap `AsyncSession`, no business logic. `get_session` commits on
+  success and rolls back on exception — repositories `flush()`, they don't commit
+- Rate limiting via `rate_limit("5/minute", key_prefix="login")` dependency.
+  Valid strategies: `fixed-window`, `moving-window`, `sliding-window`
+- Errors inherit from `AppError` with `status_code` and `code`; raise them, don't
+  return them — `register_exception_handlers` renders the envelope
+- **All API responses use the envelope pattern** — see `core.response` helpers:
   - `success_response(data, message, request)` — single resource
   - `paginated_response(items, total, params, message, request)` — lists
   - `error_response(exc, request)` — errors (auto-handled by exception handlers)
   - `validation_error_response(errors, message, request)` — 422 validation
-- Response models: `Envelope[T]`, `EnvelopeList[T]` from `core.schemas`
-- Request ID: `request.state.request_id` for tracing
+- Response models: `Envelope[T]`, `EnvelopeList[T]` from `core.schemas`; declare
+  an alias per schema (`UserReadEnvelope = Envelope[UserRead]`) and use it as
+  `response_model`
+- Request ID: `request.state.request_id` for tracing (set by `RequestContextMiddleware`,
+  echoed as the `X-Request-ID` header)
+- Pagination: `Depends(page_params)` → `PageParams(page, size)`
+- Config is read once via `get_settings()` (`lru_cache`d) — never read `os.environ`
+  directly; add new knobs to `core/config.py` **and** `.env.example`
+
+**Health probes are the one exception to the envelope.** `/live`, `/ready`, and
+`/health` are registered outside `API_PREFIX` and return bare k8s-shaped bodies.
+They return a plain `JSONResponse(503)` instead of raising, so the envelope
+exception handlers can't re-wrap them. Tests assert that `success`/`data`/`meta`
+are absent — don't "fix" them into envelopes.
+
+## Testing
+
+- `pytest-asyncio` in `asyncio_mode = "auto"` — write `async def test_...`, no marker
+- `tests/conftest.py` sets env vars (SQLite in-memory, no Redis/SMTP) **before**
+  importing the app; keep new imports below that block
+- Fixtures: `client` (httpx `AsyncClient` over ASGI), `session_factory`.
+  Schema is dropped and recreated per test, and rate-limit caches are cleared
+- Use the `mocker` fixture (`pytest-mock`), not `unittest.mock` imports
+- To exercise a failing dependency through the full HTTP path, override it via
+  `app.dependency_overrides` rather than mocking the check function
+- `filterwarnings = ["error"]` — a new warning fails the suite
+
+## Adding a Module
+
+1. `modules/<name>/` with the file set above
+2. Include its router in `api.py`
+3. Import its `models` in `alembic/env.py` so autogenerate sees the tables
+4. `make makemigrations m="add <name>"` then `make migrate`
+5. Register admin views in `main.py` if the module needs them
+6. Add `tests/test_<name>.py`
+7. Run `make verify`
