@@ -62,6 +62,12 @@ def _unavailable(payload: ReadyResponse | HealthResponse) -> JSONResponse:
     "/ready",
     response_model=ReadyResponse,
     summary="K8s readiness probe — ready to serve traffic",
+    responses={
+        503: {
+            "model": ReadyResponse,
+            "description": "A critical dependency is unavailable.",
+        }
+    },
 )
 async def ready(
     session: Annotated[AsyncSession, Depends(get_session)],
@@ -85,6 +91,12 @@ async def ready(
     "/health",
     response_model=HealthResponse,
     summary="Detailed health status for monitoring",
+    responses={
+        503: {
+            "model": HealthResponse,
+            "description": "At least one dependency check failed.",
+        }
+    },
 )
 async def health(
     session: Annotated[AsyncSession, Depends(get_session)],
