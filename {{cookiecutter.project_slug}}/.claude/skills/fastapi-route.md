@@ -103,12 +103,22 @@ When adding a new route to an existing module or creating routes for a new modul
    from .deps import CurrentUser, SuperUser
    ```
 
-9. Add rate limiting if needed:
+9. Rate limiting: every `/api` route already inherits the global budget from
+   `api_router`, so 429 is documented for free. Add a dependency only where a
+   route needs a tighter limit, optionally with its own algorithm:
    ```python
-   from ...infrastructure.ratelimit import rate_limit
-   limiter = rate_limit("10/hour", key_prefix="{action}")
+   from ...infrastructure.ratelimit import RateLimitStrategy, rate_limit
+
+   limiter = rate_limit(
+       "10/hour",
+       strategy=RateLimitStrategy.MOVING_WINDOW,  # optional per-route override
+       key_prefix="{action}",
+   )
+
    @{module}_router.post(..., dependencies=[Depends(limiter)])
    ```
+   Do not re-declare `RateLimitedError` in `responses` — it arrives from the
+   parent router.
 
 ## Conventions
 

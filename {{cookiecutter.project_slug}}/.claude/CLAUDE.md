@@ -53,8 +53,23 @@ touch a repository's session directly, services never import FastAPI.
 - Use cases are classes with an `execute()` method
 - Repositories wrap `AsyncSession`, no business logic. `get_session` commits on
   success and rolls back on exception — repositories `flush()`, they don't commit
-- Rate limiting via `rate_limit("5/minute", key_prefix="login")` dependency.
-  Valid strategies: `fixed-window`, `moving-window`, `sliding-window`
+- Rate limiting is layered. `api_router` carries a global budget
+  (`RATE_LIMIT_GLOBAL`, one bucket per client across all endpoints via
+  `per_path=False`), so **every** `/api` route can return 429 and documents it.
+  A route needing something stricter declares its own dependency:
+  ```python
+  strict = rate_limit(
+      "3/minute",
+      strategy=RateLimitStrategy.MOVING_WINDOW,   # per-route algorithm
+      key_prefix="password_reset",
+  )
+
+  @router.post("/reset", dependencies=[Depends(strict)])
+  ```
+  Router dependencies run before the route's own, so the narrower limit is the
+  one reported in the `X-RateLimit-*` headers. Valid strategies:
+  `fixed-window`, `moving-window`, `sliding-window`. Health probes sit outside
+  `API_PREFIX` and stay unthrottled
 - Errors inherit from `AppError` with `status_code` and `code`; raise them, don't
   return them — `register_exception_handlers` renders the envelope
 - **All API responses use the envelope pattern** — see `core.response` helpers:
