@@ -108,7 +108,7 @@ async def test_list_response_documents_pagination_at_the_root(
         "has_next",
         "has_previous",
         "page",
-        "per_page",
+        "page_size",
         "total",
         "total_pages",
     ]

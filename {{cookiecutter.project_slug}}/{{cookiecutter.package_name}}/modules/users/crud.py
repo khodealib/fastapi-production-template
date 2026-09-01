@@ -36,15 +36,15 @@ class UserRepository:
         await self.session.flush()
         return user
 
-    async def list(self, *, page: int, size: int) -> tuple[list[User], int]:
+    async def list(self, *, page: int, page_size: int) -> tuple[list[User], int]:
         total = (
             await self.session.execute(select(func.count()).select_from(User))
         ).scalar_one()
         stmt = (
             select(User)
             .order_by(User.created_at.desc())
-            .limit(size)
-            .offset((page - 1) * size)
+            .limit(page_size)
+            .offset((page - 1) * page_size)
         )
         result = await self.session.execute(stmt)
         return list(result.scalars().all()), total

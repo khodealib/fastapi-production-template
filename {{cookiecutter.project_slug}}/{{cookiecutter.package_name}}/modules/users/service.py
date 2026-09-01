@@ -149,8 +149,8 @@ class ListUsers:
     def __init__(self, user_repo: UserRepository) -> None:
         self.user_repo = user_repo
 
-    async def execute(self, *, page: int, size: int) -> tuple[list[User], int]:
-        return await self.user_repo.list(page=page, size=size)
+    async def execute(self, *, page: int, page_size: int) -> tuple[list[User], int]:
+        return await self.user_repo.list(page=page, page_size=page_size)
 
 
 def _hash_jti(jti: str) -> str:

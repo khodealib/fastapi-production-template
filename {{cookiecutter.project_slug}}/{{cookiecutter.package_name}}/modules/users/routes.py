@@ -158,7 +158,7 @@ async def list_users(
     params: Annotated[PageParams, Depends(page_params)],
 ) -> UserListEnvelope:
     users, total = await ListUsers(user_repo).execute(
-        page=params.page, size=params.size
+        page=params.page, page_size=params.page_size
     )
     return paginated_response(
         items=[UserRead.model_validate(u) for u in users],

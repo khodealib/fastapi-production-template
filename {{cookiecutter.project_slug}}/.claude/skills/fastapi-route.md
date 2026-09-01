@@ -81,7 +81,7 @@ When adding a new route to an existing module or creating routes for a new modul
        params: Annotated[PageParams, Depends(page_params)],
    ) -> {SchemaRead}ListEnvelope:
        items, total = await List{Models}(repo).execute(
-           page=params.page, size=params.size
+           page=params.page, page_size=params.page_size
        )
        return paginated_response(
            items=[{SchemaRead}.model_validate(i) for i in items],

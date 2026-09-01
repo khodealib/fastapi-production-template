@@ -62,7 +62,7 @@ All endpoints return a consistent envelope (see :doc:`quickstart` for examples):
 - ``data``: Payload (object/array) — null on error
 - ``message``: Human-readable summary — optional on success, required on error
 - ``errors``: Array of ``ErrorDetail`` — null on success
-- ``pagination``: Present on list responses only — page, per_page, total,
+- ``pagination``: Present on list responses only — page, page_size, total,
   total_pages, has_next, has_previous
 - ``meta``: Metadata about the request itself (request_id, tracing)
 

@@ -124,7 +124,7 @@ After installation, you can:
         "errors": null,
         "pagination": {
           "page": 1,
-          "per_page": 20,
+          "page_size": 20,
           "total": 2,
           "total_pages": 1,
           "has_next": false,

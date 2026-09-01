@@ -108,7 +108,9 @@ make verify                 # ruff + mypy + pytest
        params: Annotated[PageParams, Depends(page_params)],
    ) -> ItemListEnvelope:
        repo = ItemRepository(session)
-       items, total = await ListItems(repo).execute(page=params.page, size=params.size)
+       items, total = await ListItems(repo).execute(
+           page=params.page, page_size=params.page_size
+       )
        return paginated_response(items, total, params, request=request)
    ```
 3. Register in `api.py`:
@@ -157,7 +159,7 @@ All endpoints return a consistent envelope structure:
   "errors": null,
   "pagination": {
     "page": 1,
-    "per_page": 20,
+    "page_size": 20,
     "total": 100,
     "total_pages": 5,
     "has_next": true,
@@ -197,7 +199,7 @@ All endpoints return a consistent envelope structure:
 | `data` | object/array/null | Response payload on success |
 | `message` | string/null | Human-readable summary |
 | `errors` | array/null | Structured error details on failure |
-| `pagination` | object | List responses only: page, per_page, total, total_pages, has_next, has_previous |
+| `pagination` | object | List responses only: page, page_size, total, total_pages, has_next, has_previous |
 | `meta` | object | Request metadata (request_id) |
 
 HTTP status codes remain accurate (200, 201, 400, 401, 404, 409, 422, 500).

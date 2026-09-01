@@ -108,7 +108,9 @@ touch a repository's session directly, services never import FastAPI.
   truth, and a second declaration is exactly how docs drift from behaviour.
 - Repositories are provided by dependencies, not constructed in handlers: use
   `UserRepo` / `RefreshTokenRepo` from the module's `deps.py`
-- Pagination: `Depends(page_params)` → `PageParams(page, size)`
+- Pagination: `Depends(page_params)` → `PageParams(page, page_size)`. The
+  query parameter, the dataclass field and the response member all use the
+  same name, so nothing has to be translated between layers
 - Config is read once via `get_settings()` (`lru_cache`d) — never read `os.environ`
   directly; add new knobs to `core/config.py` **and** `.env.example`
 

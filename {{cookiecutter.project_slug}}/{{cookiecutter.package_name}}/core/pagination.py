@@ -17,14 +17,14 @@ if TYPE_CHECKING:
 @dataclass
 class PageParams:
     page: int = 1
-    size: int = 20
+    page_size: int = 20
 
 
 async def page_params(
     page: int = Query(1, ge=1, description="Page number, 1-indexed"),
-    size: int = Query(20, ge=1, le=100, description="Items per page"),
+    page_size: int = Query(20, ge=1, le=100, description="Items per page"),
 ) -> PageParams:
-    return PageParams(page=page, size=size)
+    return PageParams(page=page, page_size=page_size)
 
 
 @dataclass
@@ -32,18 +32,18 @@ class Page[T]:
     items: list[T]
     total: int
     page: int
-    size: int
+    page_size: int
     pages: int
 
     @classmethod
     def build(cls, items: list[T], total: int, params: PageParams) -> Page[T]:
-        size = params.size or 1
+        page_size = params.page_size or 1
         return cls(
             items=items,
             total=total,
             page=params.page,
-            size=params.size,
-            pages=(total + size - 1) // size,
+            page_size=params.page_size,
+            pages=(total + page_size - 1) // page_size,
         )
 
     def to_pagination(self) -> Pagination:
@@ -52,7 +52,7 @@ class Page[T]:
 
         return Pagination(
             page=self.page,
-            per_page=self.size,
+            page_size=self.page_size,
             total=self.total,
             total_pages=self.pages,
             has_next=self.page < self.pages,
@@ -62,7 +62,7 @@ class Page[T]:
 
 def paginate_stmt[T: tuple[Any, ...]](stmt: Select[T], params: PageParams) -> Select[T]:
     """Apply offset/limit to a SELECT statement."""
-    return stmt.limit(params.size).offset((params.page - 1) * params.size)
+    return stmt.limit(params.page_size).offset((params.page - 1) * params.page_size)
 
 
 async def count_total(session, stmt):  # type: ignore[no-untyped-def]

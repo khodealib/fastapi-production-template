@@ -58,7 +58,7 @@ class Pagination(CustomModel):
     """
 
     page: int = Field(examples=[1])
-    per_page: int = Field(examples=[20])
+    page_size: int = Field(examples=[20])
     total: int = Field(examples=[245])
     total_pages: int = Field(examples=[13])
     has_next: bool = Field(examples=[True])

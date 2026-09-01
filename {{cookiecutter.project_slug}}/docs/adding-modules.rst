@@ -46,7 +46,7 @@ Adding Modules
       ) -> ItemListEnvelope:
           repo = ItemRepository(session)
           items, total = await ListItems(repo).execute(
-              page=params.page, size=params.size
+              page=params.page, page_size=params.page_size
           )
           return paginated_response(
               items=[ItemRead.model_validate(i) for i in items],
