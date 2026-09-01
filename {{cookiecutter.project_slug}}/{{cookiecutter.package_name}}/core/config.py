@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     )
 
     # --- app -------------------------------------------------------------
-    APP_NAME: str = "Fixture Project"
-    APP_VERSION: str = "0.1.0"
-    APP_DESCRIPTION: str = "Fixture description"
+    APP_NAME: str = "{{ cookiecutter.project_name }}"
+    APP_VERSION: str = "{{ cookiecutter.version }}"
+    APP_DESCRIPTION: str = "{{ cookiecutter.description }}"
     ENVIRONMENT: Environment = Environment.DEVELOPMENT
     DEBUG: bool = False
     SECRET_KEY: str = DEV_SECRET
