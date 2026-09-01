@@ -76,17 +76,47 @@ def _scope_by_ip(request: Request) -> str:
     return request.client.host if request.client else "unknown"
 
 
+def build_key(
+    key_prefix: str,
+    request: Request,
+    scope: ScopedRateLimiter = _scope_by_ip,
+    *,
+    per_path: bool = True,
+) -> str:
+    """Bucket key for a request. Omitting the path shares one budget app-wide."""
+    if per_path:
+        return f"{key_prefix}:{request.url.path}:{scope(request)}"
+    return f"{key_prefix}:{scope(request)}"
+
+
 def rate_limit(
     item: str,
     *,
     strategy: RateLimitStrategy | None = None,
     scope: ScopedRateLimiter = _scope_by_ip,
     key_prefix: str = "rl",
+    per_path: bool = True,
 ) -> Callable[[Request], Any]:
     """FastAPI dependency enforcing ``item`` (e.g. ``"10/minute"``).
 
-    Strategy / storage come from settings unless overridden here. Result is
-    stashed on ``request.state.rate_limit`` for RateLimitHeadersMiddleware.
+    Strategy and storage come from settings unless overridden per call, so a
+    single route can opt into a different algorithm::
+
+        strict = rate_limit(
+            "3/minute",
+            strategy=RateLimitStrategy.MOVING_WINDOW,
+            key_prefix="password_reset",
+        )
+
+        @router.post("/reset", dependencies=[Depends(strict)])
+
+    ``per_path`` decides whether each route counts separately (the default) or
+    every route shares one bucket per client — what an app-wide budget needs.
+    Layering is fine: a router-level dependency runs before the route's own, so
+    the narrower limit is the one reported in the ``X-RateLimit-*`` headers.
+
+    The outcome is stashed on ``request.state.rate_limit`` for
+    RateLimitHeadersMiddleware.
     """
     settings = get_settings()
     strategy = strategy or _parse_strategy(settings.RATE_LIMIT_STRATEGY)
@@ -94,7 +124,7 @@ def rate_limit(
 
     async def dependency(request: Request) -> None:
         limiter = get_rate_limiter(settings.RATE_LIMIT_STORAGE_URI, strategy)
-        key = f"{key_prefix}:{request.url.path}:{scope(request)}"
+        key = build_key(key_prefix, request, scope, per_path=per_path)
         allowed = await run_in_threadpool(limiter.hit, rate, key)
         reset_ts, remaining = await run_in_threadpool(
             limiter.get_window_stats, rate, key
