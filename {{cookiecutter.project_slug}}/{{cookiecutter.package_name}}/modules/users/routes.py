@@ -12,7 +12,6 @@ from ...core.exceptions import (
     ConflictError,
     ForbiddenError,
     NotFoundError,
-    RateLimitedError,
     UnauthorizedError,
 )
 from ...core.openapi import error_responses
@@ -55,7 +54,7 @@ register_limiter = rate_limit("10/hour", key_prefix="register")
     response_model=UserReadEnvelope,
     status_code=status.HTTP_201_CREATED,
     dependencies=[Depends(register_limiter)],
-    responses=error_responses(ConflictError, RateLimitedError, validation=True),
+    responses=error_responses(ConflictError, validation=True),
 )
 async def register(
     request: Request,
@@ -76,7 +75,7 @@ async def register(
     "/token",
     response_model=TokenResponseEnvelope,
     dependencies=[Depends(login_limiter)],
-    responses=error_responses(UnauthorizedError, RateLimitedError, validation=True),
+    responses=error_responses(UnauthorizedError, validation=True),
 )
 async def login(
     request: Request,
@@ -99,7 +98,7 @@ async def login(
     "/refresh",
     response_model=TokenResponseEnvelope,
     dependencies=[Depends(refresh_limiter)],
-    responses=error_responses(UnauthorizedError, RateLimitedError, validation=True),
+    responses=error_responses(UnauthorizedError, validation=True),
 )
 async def refresh(
     request: Request,
