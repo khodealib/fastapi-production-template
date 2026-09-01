@@ -29,11 +29,18 @@ Feature-based modules under `{{ cookiecutter.package_name }}/modules/`. Each mod
 - `crud.py` → repository adapters (data access only)
 - `models.py` → SQLAlchemy ORM entities
 - `schemas.py` → Pydantic API boundaries
-- `deps.py` → FastAPI dependencies
+- `deps.py` → FastAPI dependencies, including repository providers
 - `admin.py` → SQLAdmin `ModelView`s + `register_admin()`
 
+Keep every use case in `service.py` while the module is small. Split it into a
+`usecases/` package — one file per use case, re-exported from its `__init__.py`
+— once `service.py` passes roughly 300 lines or 8 use cases, whichever comes
+first. Routers get the same treatment at the same threshold. Do not start a
+module in the split layout: a package of six-line files is harder to read than
+one file.
+
 `core/` holds cross-cutting: config, database, security, exceptions, pagination,
-health, **response helpers**.
+health, **response helpers**, and `openapi.py` (error documentation).
 `infrastructure/` holds external integrations: cache, email, i18n, rate limiting, tasks.
 `main.py` is the app factory (`create_app()`); `api.py` mounts every module router.
 
@@ -60,6 +67,22 @@ touch a repository's session directly, services never import FastAPI.
   `response_model`
 - Request ID: `request.state.request_id` for tracing (set by `RequestContextMiddleware`,
   echoed as the `X-Request-ID` header)
+- **Document the errors a route can raise** with `core.openapi.error_responses`,
+  which reads status code, error code and description off the exception class:
+  ```python
+  @users_router.get(
+      "/{user_id}",
+      response_model=UserReadEnvelope,
+      responses=error_responses(ForbiddenError, NotFoundError, validation=True),
+  )
+  ```
+  Pass `validation=True` on any route with a body, path or query parameter —
+  FastAPI's built-in 422 schema describes a bare list, not this app's envelope.
+  Errors shared by every route in a router go on the router itself. Never write
+  a helper for the *success* response: `response_model` is its only source of
+  truth, and a second declaration is exactly how docs drift from behaviour.
+- Repositories are provided by dependencies, not constructed in handlers: use
+  `UserRepo` / `RefreshTokenRepo` from the module's `deps.py`
 - Pagination: `Depends(page_params)` → `PageParams(page, size)`
 - Config is read once via `get_settings()` (`lru_cache`d) — never read `os.environ`
   directly; add new knobs to `core/config.py` **and** `.env.example`
