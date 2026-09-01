@@ -47,6 +47,6 @@ class RefreshTokenAdmin(ModelView, model=RefreshToken):
     can_view_details = True
 
 
-def register_admin(admin) -> None:  # type: ignore[no-untyped-def]
+def register_admin(admin) -> None:
     admin.add_view(UserAdmin)
     admin.add_view(RefreshTokenAdmin)

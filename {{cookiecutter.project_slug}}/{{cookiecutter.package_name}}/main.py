@@ -38,7 +38,7 @@ def create_app() -> FastAPI:
 
     @asynccontextmanager
     async def lifespan(
-        app: FastAPI,  # noqa: ARG001 - signature fixed by FastAPI
+        app: FastAPI,
     ) -> AsyncIterator[None]:
         settings.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
         yield

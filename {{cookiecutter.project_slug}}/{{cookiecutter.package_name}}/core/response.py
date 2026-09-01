@@ -15,7 +15,7 @@ T = TypeVar("T")
 def _get_request_id(request: Request | None) -> str:
     """Extract request_id from request state."""
     if request and hasattr(request.state, "request_id"):
-        return request.state.request_id  # type: ignore[no-any-return]
+        return request.state.request_id
     return "unknown"
 
 

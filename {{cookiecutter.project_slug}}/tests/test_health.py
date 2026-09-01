@@ -62,7 +62,7 @@ async def test_ready_database_failure_endpoint(
     a ValidationError inside the handler and produced a 500.
     """
 
-    async def broken_session():  # type: ignore[no-untyped-def]
+    async def broken_session():
         mock = mocker.AsyncMock(spec=AsyncSession)
         mock.execute.side_effect = Exception("DB down")
         yield mock
@@ -86,7 +86,7 @@ async def test_health_database_failure_endpoint(
 ) -> None:
     """Health endpoint returns 503 (not 500) when database is unavailable."""
 
-    async def broken_session():  # type: ignore[no-untyped-def]
+    async def broken_session():
         mock = mocker.AsyncMock(spec=AsyncSession)
         mock.execute.side_effect = Exception("DB down")
         yield mock

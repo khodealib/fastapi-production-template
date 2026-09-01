@@ -14,9 +14,7 @@ logger = structlog.get_logger(__name__)
 class RequestContextMiddleware(BaseHTTPMiddleware):
     """Bind request_id / client_ip to log context + emit a request log line."""
 
-    async def dispatch(  # type: ignore[no-untyped-def]
-        self, request: Request, call_next
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next) -> Response:
         request_id = request.headers.get("X-Request-ID") or uuid.uuid4().hex
         start = time.perf_counter()
 
@@ -45,9 +43,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
 class RateLimitHeadersMiddleware(BaseHTTPMiddleware):
     """Emit X-RateLimit-* headers stashed by the ``rate_limit`` dependency."""
 
-    async def dispatch(  # type: ignore[no-untyped-def]
-        self, request: Request, call_next
-    ) -> Response:
+    async def dispatch(self, request: Request, call_next) -> Response:
         response: Response = await call_next(request)
         meta = getattr(request.state, "rate_limit", None)
         if meta:

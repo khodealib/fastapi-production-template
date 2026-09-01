@@ -65,7 +65,7 @@ def paginate_stmt[T: tuple[Any, ...]](stmt: Select[T], params: PageParams) -> Se
     return stmt.limit(params.page_size).offset((params.page - 1) * params.page_size)
 
 
-async def count_total(session, stmt):  # type: ignore[no-untyped-def]
+async def count_total(session, stmt):
     """Return total rows a SELECT would match."""
     count_stmt = select(func.count()).select_from(stmt.subquery())
     return (await session.execute(count_stmt)).scalar_one()

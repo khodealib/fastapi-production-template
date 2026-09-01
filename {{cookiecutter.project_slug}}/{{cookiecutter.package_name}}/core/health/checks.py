@@ -24,7 +24,7 @@ class CheckResult:
     detail: str | None = None
 
 
-async def check_database(session: AsyncSession, timeout: float = 2.0) -> CheckResult:  # noqa: ASYNC109
+async def check_database(session: AsyncSession, timeout: float = 2.0) -> CheckResult:
     """Check database connectivity with a lightweight query.
 
     Args:
@@ -42,13 +42,13 @@ async def check_database(session: AsyncSession, timeout: float = 2.0) -> CheckRe
         return CheckResult(name="database", status="failed", detail="timeout")
     except SQLAlchemyError as e:
         return CheckResult(name="database", status="failed", detail=str(e))
-    except Exception as e:  # noqa: BLE001 - catch all to avoid probe crashes
+    except Exception as e:
         return CheckResult(name="database", status="failed", detail=f"unexpected: {e}")
 
 
 async def check_redis(
     redis: Redis | None,
-    timeout: float = 2.0,  # noqa: ASYNC109
+    timeout: float = 2.0,
 ) -> CheckResult:
     """Check Redis connectivity with PING.
 
@@ -68,7 +68,7 @@ async def check_redis(
         return CheckResult(name="redis", status="ok")
     except TimeoutError:
         return CheckResult(name="redis", status="failed", detail="timeout")
-    except Exception as e:  # noqa: BLE001 - catch all to avoid probe crashes
+    except Exception as e:
         with suppress(Exception):
             await redis.aclose()
         return CheckResult(name="redis", status="failed", detail=str(e))

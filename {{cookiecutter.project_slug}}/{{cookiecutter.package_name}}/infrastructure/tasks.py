@@ -35,7 +35,7 @@ if settings.REDIS_URL is None:
     celery_app.conf.task_always_eager = True  # dev convenience: no broker needed
 
 
-@celery_app.task(retries=3, default_retry_delay=60, max_retries=3)  # type: ignore[untyped-decorator]
+@celery_app.task(retries=3, default_retry_delay=60, max_retries=3)
 def send_email_task(
     to: str, subject: str, template_name: str, context: dict[str, Any] | None = None
 ) -> bool:

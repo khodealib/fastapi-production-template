@@ -52,7 +52,7 @@ async def get_current_user(
         raise credentials_error
     try:
         user_id = UUID(payload["sub"])
-    except TypeError, ValueError:
+    except (TypeError, ValueError):
         raise credentials_error from None
 
     user = await user_repo.get_by_id(user_id)

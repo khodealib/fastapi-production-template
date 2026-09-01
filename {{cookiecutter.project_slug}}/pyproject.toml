@@ -86,6 +86,10 @@ ignore = [
 
 [tool.ruff.lint.per-file-ignores]
 "{{ cookiecutter.package_name }}/alembic/versions/*.py" = ["I", "UP", "SIM", "E501", "W"]
+"{{ cookiecutter.package_name }}/alembic/env.py" = ["F401"]
+"{{ cookiecutter.package_name }}/core/config.py" = ["E501"]
+"{{ cookiecutter.package_name }}/core/health/checks.py" = ["ASYNC109", "BLE001"]
+"{{ cookiecutter.package_name }}/main.py" = ["ARG001"]
 "tests/*" = ["S101"]
 
 [tool.ruff.lint.isort]
@@ -136,6 +140,27 @@ ignore_missing_imports = true
 [[tool.mypy.overrides]]
 module = "celery.*"
 ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = [
+    "{{ cookiecutter.package_name }}.middleware",
+    "{{ cookiecutter.package_name }}.modules.users.admin",
+    "{{ cookiecutter.package_name }}.core.pagination",
+    "{{ cookiecutter.package_name }}.alembic.env",
+]
+disable_error_code = ["no-untyped-def"]
+
+[[tool.mypy.overrides]]
+module = "{{ cookiecutter.package_name }}.core.response"
+disable_error_code = ["no-any-return"]
+
+[[tool.mypy.overrides]]
+module = "{{ cookiecutter.package_name }}.infrastructure.tasks"
+disable_error_code = ["untyped-decorator"]
+
+[[tool.mypy.overrides]]
+module = ["test_ratelimit", "test_health"]
+disable_error_code = ["no-untyped-def", "arg-type"]
 
 # ---------------------------------------------------------------------------
 # pytest

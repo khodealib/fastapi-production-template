@@ -62,8 +62,9 @@ in place. Always generate a fixture project and run the real checks against it:
 
 ```bash
 rm -rf /tmp/final && uvx cookiecutter --no-input --output-dir /tmp/final . \
-  project_name="Fixture" project_slug="fixture" package_name="fixture" \
+  project_name="Test Service" project_slug="fixture" package_name="fixture" \
   description="Test" author_name="T" author_email="t@t.com" version="0.1.0" \
+  python_version="3.13" \
   && cd /tmp/final/fixture && uv sync \
   && uv run ruff check fixture tests \
   && uv run ruff format --check fixture tests \

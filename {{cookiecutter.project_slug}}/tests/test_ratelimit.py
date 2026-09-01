@@ -129,25 +129,25 @@ class _FakeRequest:
 def test_forwarded_for_is_ignored_without_trusted_proxies() -> None:
     """The default must not let a client name its own address."""
     request = _FakeRequest("10.0.0.1", forwarded="1.2.3.4")
-    assert resolve_client_ip(request, 0) == "10.0.0.1"  # type: ignore[arg-type]
+    assert resolve_client_ip(request, 0) == "10.0.0.1"
 
 
 def test_one_proxy_uses_the_address_that_proxy_appended() -> None:
     """Behind one proxy the rightmost entry is the only trustworthy one."""
     request = _FakeRequest("10.0.0.1", forwarded="9.9.9.9, 203.0.113.7")
-    assert resolve_client_ip(request, 1) == "203.0.113.7"  # type: ignore[arg-type]
+    assert resolve_client_ip(request, 1) == "203.0.113.7"
 
 
 def test_two_proxies_step_further_back_along_the_chain() -> None:
     request = _FakeRequest("10.0.0.1", forwarded="9.9.9.9, 203.0.113.7, 10.0.0.9")
-    assert resolve_client_ip(request, 2) == "203.0.113.7"  # type: ignore[arg-type]
+    assert resolve_client_ip(request, 2) == "203.0.113.7"
 
 
 def test_short_or_missing_chain_falls_back_to_the_peer() -> None:
-    assert resolve_client_ip(_FakeRequest("10.0.0.1"), 1) == "10.0.0.1"  # type: ignore[arg-type]
+    assert resolve_client_ip(_FakeRequest("10.0.0.1"), 1) == "10.0.0.1"
     short = _FakeRequest("10.0.0.1", forwarded="203.0.113.7")
-    assert resolve_client_ip(short, 2) == "10.0.0.1"  # type: ignore[arg-type]
-    assert resolve_client_ip(_FakeRequest(None), 0) == UNKNOWN_CLIENT  # type: ignore[arg-type]
+    assert resolve_client_ip(short, 2) == "10.0.0.1"
+    assert resolve_client_ip(_FakeRequest(None), 0) == UNKNOWN_CLIENT
 
 
 async def test_forwarded_clients_get_separate_budgets() -> None:

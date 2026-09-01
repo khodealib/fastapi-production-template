@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 from alembic import context
 from {{ cookiecutter.package_name }}.core.config import get_settings
 from {{ cookiecutter.package_name }}.core.database import Base
-from {{ cookiecutter.package_name }}.modules.users import models as _users_models  # noqa: F401
+from {{ cookiecutter.package_name }}.modules.users import models as _users_models
 
 config = context.config
 
@@ -40,7 +40,7 @@ def run_migrations_offline() -> None:
         context.run_migrations()
 
 
-def do_run_migrations(connection) -> None:  # type: ignore[no-untyped-def]
+def do_run_migrations(connection) -> None:
     context.configure(connection=connection, target_metadata=target_metadata)
     with context.begin_transaction():
         context.run_migrations()
