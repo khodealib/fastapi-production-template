@@ -48,7 +48,7 @@ services:
 
   worker:
     build: .
-    command: celery -A {{ cookiecutter.package_name }}.tasks.celery_app worker --loglevel=info --autoreload
+    command: celery -A {{ cookiecutter.package_name }}.infrastructure.tasks.celery_app worker --loglevel=info
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@db:5432/{{ cookiecutter.project_slug }}
       REDIS_URL: redis://redis:6379/0
@@ -63,7 +63,7 @@ services:
 
   beat:
     build: .
-    command: celery -A {{ cookiecutter.package_name }}.tasks.celery_app beat --loglevel=info
+    command: celery -A {{ cookiecutter.package_name }}.infrastructure.tasks.celery_app beat --loglevel=info
     environment:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development
