@@ -66,7 +66,8 @@ async def test_openapi_documents_error_statuses(client: AsyncClient) -> None:
     paths: dict[str, Any] = resp.json()["paths"]
 
     detail = paths["/api/users/{user_id}"]["get"]["responses"]
-    assert sorted(detail) == ["200", "401", "403", "404", "422"]
+    # 429 arrives from the api_router's global limiter.
+    assert sorted(detail) == ["200", "401", "403", "404", "422", "429"]
 
     schema = detail["404"]["content"]["application/json"]["schema"]
     assert schema["$ref"].endswith("Envelope_NoneType_")
