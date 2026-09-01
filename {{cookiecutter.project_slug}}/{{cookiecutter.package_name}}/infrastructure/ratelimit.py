@@ -21,6 +21,7 @@ from limits.storage import storage_from_string
 
 from ..core.config import get_settings
 from ..core.exceptions import RateLimitedError
+from ..core.net import client_ip
 
 if TYPE_CHECKING:
     from limits.strategies import RateLimiter as _LimitsRateLimiter
@@ -73,7 +74,8 @@ def _parse_strategy(value: str) -> RateLimitStrategy:
 
 
 def _scope_by_ip(request: Request) -> str:
-    return request.client.host if request.client else "unknown"
+    """Bucket per caller, honouring X-Forwarded-For behind trusted proxies."""
+    return client_ip(request)
 
 
 def build_key(

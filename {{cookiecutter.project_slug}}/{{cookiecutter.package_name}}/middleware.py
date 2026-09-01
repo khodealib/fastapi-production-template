@@ -6,6 +6,8 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.requests import Request
 from starlette.responses import Response
 
+from .core.net import client_ip
+
 logger = structlog.get_logger(__name__)
 
 
@@ -24,7 +26,7 @@ class RequestContextMiddleware(BaseHTTPMiddleware):
         structlog.contextvars.clear_contextvars()
         structlog.contextvars.bind_contextvars(
             request_id=request_id,
-            client_ip=request.client.host if request.client else "unknown",
+            client_ip=client_ip(request),
             path=request.url.path,
             method=request.method,
         )

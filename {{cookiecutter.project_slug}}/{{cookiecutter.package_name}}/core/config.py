@@ -32,6 +32,10 @@ class Settings(BaseSettings):
     SECRET_KEY: str = DEV_SECRET
     API_PREFIX: str = "/api"
     ALLOWED_HOSTS: list[str] = ["*"]
+    # Number of reverse proxies in front of the app. 0 ignores X-Forwarded-For
+    # entirely; any other value must match the deployment exactly, or clients
+    # can forge the header and escape rate limiting.
+    TRUSTED_PROXY_HOPS: int = 0
     CORS_ORIGINS: list[str] = ["http://localhost:8000"]
 
     # --- database ---------------------------------------------------------
