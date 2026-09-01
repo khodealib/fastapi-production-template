@@ -70,6 +70,13 @@ touch a repository's session directly, services never import FastAPI.
   one reported in the `X-RateLimit-*` headers. Valid strategies:
   `fixed-window`, `moving-window`, `sliding-window`. Health probes sit outside
   `API_PREFIX` and stay unthrottled
+- Callers are identified by `core.net.client_ip`, used by both the limiter and
+  the request log. It reads `X-Forwarded-For` only when `TRUSTED_PROXY_HOPS` is
+  greater than zero, and takes the entry that many hops from the right — the
+  ones your own proxies appended. **`TRUSTED_PROXY_HOPS` must equal the real
+  number of proxies**: leave it at 0 when the app is directly exposed, or any
+  client can rotate the header and get a fresh budget per request; set it too
+  high and the value is attacker-supplied again. Behind one nginx it is 1
 - Errors inherit from `AppError` with `status_code` and `code`; raise them, don't
   return them — `register_exception_handlers` renders the envelope
 - **All API responses use the envelope pattern** — see `core.response` helpers:

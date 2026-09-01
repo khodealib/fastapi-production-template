@@ -1,6 +1,7 @@
 """Tests for the layered rate limiter."""
 
 from collections.abc import AsyncIterator, Callable
+from types import SimpleNamespace
 from typing import Any
 
 import pytest
@@ -10,6 +11,7 @@ from httpx import ASGITransport, AsyncClient
 from {{ cookiecutter.package_name }}.core.exception_handlers import (
     register_exception_handlers,
 )
+from {{ cookiecutter.package_name }}.core.net import UNKNOWN_CLIENT, resolve_client_ip
 from {{ cookiecutter.package_name }}.infrastructure.ratelimit import (
     RateLimitStrategy,
     rate_limit,
@@ -114,3 +116,55 @@ async def test_probes_are_not_rate_limited(client: AsyncClient) -> None:
 
     for probe in ("/live", "/ready", "/health"):
         assert "429" not in paths[probe]["get"]["responses"]
+
+
+class _FakeRequest:
+    """Minimal stand-in — resolve_client_ip only reads headers and client."""
+
+    def __init__(self, peer: str | None, forwarded: str | None = None) -> None:
+        self.headers = {"X-Forwarded-For": forwarded} if forwarded else {}
+        self.client = SimpleNamespace(host=peer) if peer else None
+
+
+def test_forwarded_for_is_ignored_without_trusted_proxies() -> None:
+    """The default must not let a client name its own address."""
+    request = _FakeRequest("10.0.0.1", forwarded="1.2.3.4")
+    assert resolve_client_ip(request, 0) == "10.0.0.1"  # type: ignore[arg-type]
+
+
+def test_one_proxy_uses_the_address_that_proxy_appended() -> None:
+    """Behind one proxy the rightmost entry is the only trustworthy one."""
+    request = _FakeRequest("10.0.0.1", forwarded="9.9.9.9, 203.0.113.7")
+    assert resolve_client_ip(request, 1) == "203.0.113.7"  # type: ignore[arg-type]
+
+
+def test_two_proxies_step_further_back_along_the_chain() -> None:
+    request = _FakeRequest("10.0.0.1", forwarded="9.9.9.9, 203.0.113.7, 10.0.0.9")
+    assert resolve_client_ip(request, 2) == "203.0.113.7"  # type: ignore[arg-type]
+
+
+def test_short_or_missing_chain_falls_back_to_the_peer() -> None:
+    assert resolve_client_ip(_FakeRequest("10.0.0.1"), 1) == "10.0.0.1"  # type: ignore[arg-type]
+    short = _FakeRequest("10.0.0.1", forwarded="203.0.113.7")
+    assert resolve_client_ip(short, 2) == "10.0.0.1"  # type: ignore[arg-type]
+    assert resolve_client_ip(_FakeRequest(None), 0) == UNKNOWN_CLIENT  # type: ignore[arg-type]
+
+
+async def test_forwarded_clients_get_separate_budgets() -> None:
+    """Two callers behind one proxy must not share a bucket."""
+    app = _build_app(
+        rate_limit(
+            "1/minute",
+            scope=lambda request: resolve_client_ip(request, 1),
+            key_prefix="forwarded",
+            per_path=False,
+        )
+    )
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        alice = {"X-Forwarded-For": "203.0.113.7"}
+        bob = {"X-Forwarded-For": "203.0.113.8"}
+
+        assert (await ac.get("/first", headers=alice)).status_code == 200
+        assert (await ac.get("/first", headers=bob)).status_code == 200
+        assert (await ac.get("/second", headers=alice)).status_code == 429
