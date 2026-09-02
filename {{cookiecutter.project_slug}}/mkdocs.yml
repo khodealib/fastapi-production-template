@@ -1,0 +1,27 @@
+site_name: "{{ cookiecutter.project_name }}"
+site_description: "{{ cookiecutter.description }}"
+docs_dir: docs
+theme:
+  name: material
+  palette:
+    - scheme: default
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - content.code.copy
+
+nav:
+  - Home: README.md
+  - Installation: installation.md
+  - Quickstart: quickstart.md
+  - Architecture: architecture.md
+  - Configuration: configuration.md
+  - API Contract: api-contract.md
+  - Adding Modules: adding-modules.md

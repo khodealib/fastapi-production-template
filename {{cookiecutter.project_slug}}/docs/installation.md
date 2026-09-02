@@ -40,3 +40,15 @@ make docker-up     # builds the image, runs api + db + redis
 
 The API is then at `http://localhost:8000` — `/docs` for the schema browser,
 `/admin` for the admin panel.
+
+## Visual dev tools
+
+For a browser-based database UI and an email preview interface, run:
+
+```bash
+make dev-tools
+```
+
+This starts pgAdmin at `http://localhost:5050` (login: `admin@example.com` /
+`admin`) and Mailpit at `http://localhost:8025`. To route outgoing emails to
+Mailpit, set `SMTP_HOST=localhost` and `SMTP_PORT=1025` in `.env`.

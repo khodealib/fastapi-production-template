@@ -1,29 +1,39 @@
 # Adding a Module
 
 A module is a feature: everything about `items` lives under
-`{{ cookiecutter.package_name }}/modules/items/`. The `users` module is the
-worked example — read it alongside this page.
+`app/modules/items/`. The `users` module is the worked example — read it
+alongside this page.
 
-## 1. Create the files
+## 1. Create the packages
 
 ```bash
-mkdir -p {{ cookiecutter.package_name }}/modules/items
+mkdir -p app/modules/items/{models,schemas,repositories,usecases,routes}
 ```
 
-| File | Holds |
+| Package or file | Holds |
 |---|---|
-| `models.py` | SQLAlchemy ORM entities |
-| `schemas.py` | Pydantic request and response schemas |
-| `crud.py` | Repositories — data access only |
-| `service.py` | Use cases, each a class with `execute()` |
-| `routes.py` | The router — thin |
+| `models/` | SQLAlchemy ORM entities, one per file |
+| `schemas/` | Pydantic request and response schemas |
+| `repositories/` | Repositories — data access only, one per entity |
+| `usecases/` | Use cases, one class with `execute()` per file |
+| `routes/` | The routers — thin, one per file |
 | `deps.py` | Dependencies, including repository providers |
 | `admin.py` | SQLAdmin views, if the module needs them |
+| `metrics.py` | Prometheus counters for this module's business events |
 
-## 2. Envelope aliases in `schemas.py`
+Every package gets an `__init__.py` that re-exports its public names, so callers
+write `from ..usecases import CreateItem` and never reach into a file directly.
+Names are spelled out in full — `repositories/`, not `crud/`.
+
+**Imports follow the module boundary.** Inside `modules/items/` the imports are
+relative (`from ..deps import ItemRepo`); anything outside it is absolute
+(`from app.http.response import success_response`). A `from ...` is always a
+mistake — it means the import left the module and should have been absolute.
+
+## 2. Envelope aliases in `schemas/item.py`
 
 ```python
-from ...core.schemas import Envelope, EnvelopeList
+from app.http.schemas import Envelope, EnvelopeList
 
 ItemReadEnvelope = Envelope[ItemRead]
 ItemListEnvelope = EnvelopeList[ItemRead]
@@ -37,12 +47,10 @@ Handlers never build a repository themselves.
 from typing import Annotated
 
 from fastapi import Depends
-from sqlalchemy.ext.asyncio import AsyncSession
 
-from ...core.database import get_session
-from .crud import ItemRepository
+from app.database.session import Session
 
-Session = Annotated[AsyncSession, Depends(get_session)]
+from .repositories import ItemRepository
 
 
 def get_item_repository(session: Session) -> ItemRepository:
@@ -52,7 +60,39 @@ def get_item_repository(session: Session) -> ItemRepository:
 ItemRepo = Annotated[ItemRepository, Depends(get_item_repository)]
 ```
 
-## 4. The router
+## 4. Business metrics in `metrics.py`
+
+Named Prometheus metrics for the events this module cares about. Use cases call
+them; routes and repositories do not — HTTP-level instrumentation already lives
+in `observability/metrics.py`.
+
+```python
+from prometheus_client import Counter
+
+items_created_total = Counter(
+    "items_created_total",
+    "Total number of items created.",
+)
+```
+
+Then, in the use case, after the state change has actually happened:
+
+```python
+from ..metrics import items_created_total
+
+
+class CreateItem:
+    async def execute(self, ...) -> Item:
+        item = await self.repo.create(...)
+        items_created_total.inc()
+        return item
+```
+
+Metrics with an `outcome` label (`["outcome"]`) are worth it wherever a use case
+can fail for a business reason: increment `outcome="failure"` before *every*
+`raise` and `outcome="success"` before the return, or the ratio lies.
+
+## 5. The router — `routes/items.py`
 
 Declare the errors each route can raise. `error_responses` reads them off the
 exception classes, so the documentation cannot drift from the behaviour. Do not
@@ -63,13 +103,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request
 
-from ...core.exceptions import ConflictError, NotFoundError
-from ...core.openapi import error_responses
-from ...core.pagination import PageParams, page_params
-from ...core.response import paginated_response, success_response
-from .deps import ItemRepo
-from .schemas import ItemCreate, ItemListEnvelope, ItemRead, ItemReadEnvelope
-from .service import CreateItem, ListItems
+from app.exceptions.errors import ConflictError, NotFoundError
+from app.http.openapi import error_responses
+from app.http.pagination import PageParams, page_params
+from app.http.response import paginated_response, success_response
+
+from ..deps import ItemRepo
+from ..schemas import ItemCreate, ItemListEnvelope, ItemRead, ItemReadEnvelope
+from ..usecases import CreateItem, ListItems
 
 item_router = APIRouter(prefix="/items", tags=["items"])
 
@@ -115,22 +156,32 @@ async def create_item(
     )
 ```
 
-## 5. Register it
+Re-export it from `routes/__init__.py`:
+
+```python
+from .items import item_router
+
+__all__ = ["item_router"]
+```
+
+## 6. Register it
 
 ```python
 # api.py
-from .modules.items.routes import item_router
+from app.modules.items.routes import item_router
 
 api_router.include_router(item_router)
 ```
 
-## 6. Make the tables real
+It mounts at the root — `/items`. There is no `/api` prefix.
+
+## 7. Make the tables real
 
 Alembic only sees models that have been imported, so add the module to
-`{{ cookiecutter.package_name }}/alembic/env.py`:
+`app/alembic/env.py` — one line per entity:
 
 ```python
-from {{ cookiecutter.package_name }}.modules.items import models as _items_models  # noqa: F401
+from app.modules.items.models import Item as _Item  # noqa: F401
 ```
 
 Then:
@@ -143,7 +194,7 @@ make migrate
 Forgetting the import produces an empty migration rather than an error — check
 the generated file before applying it.
 
-## 7. Test it
+## 8. Test it
 
 Add `tests/test_items.py`. Assert on the envelope, not just the status:
 
@@ -154,7 +205,7 @@ assert body["data"]["title"] == "…"
 assert body["pagination"]["has_next"] is False   # list responses
 ```
 
-## 8. Verify
+## 9. Verify
 
 ```bash
 make verify        # ruff + mypy --strict + bandit + pytest

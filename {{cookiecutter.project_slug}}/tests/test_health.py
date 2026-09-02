@@ -5,11 +5,11 @@ from httpx import AsyncClient
 from pytest_mock import MockerFixture
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from {{ cookiecutter.package_name }}.core.config import Settings
-from {{ cookiecutter.package_name }}.core.constants import Environment
-from {{ cookiecutter.package_name }}.core.database import get_session
-from {{ cookiecutter.package_name }}.core.health.checks import check_database, check_redis
-from {{ cookiecutter.package_name }}.main import app
+from app.config.constants import Environment
+from app.config.settings import Settings
+from app.database import get_session
+from app.health.checks import check_database, check_redis
+from app.main import app
 
 
 async def test_live(client: AsyncClient) -> None:

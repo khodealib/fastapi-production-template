@@ -11,7 +11,7 @@ and is full of Jinja placeholders that only resolve when a project is generated.
 ├── cookiecutter.json              # prompts + _copy_without_render list
 ├── README.md                      # template docs (for template users)
 └── {{cookiecutter.project_slug}}/ # ← everything the generated project gets
-    ├── {{cookiecutter.package_name}}/
+    ├── app/                       # the package — a fixed name, not templated
     ├── tests/  docs/  fixtures/  templates/
     ├── .claude/CLAUDE.md          # instructions shipped INTO generated projects
     └── .claude/skills/<name>/SKILL.md  # fastapi-route, sqlalchemy-model, pydantic-schema,
@@ -27,13 +27,14 @@ Two CLAUDE.md files, different audiences:
 ## Templating Rules
 
 Placeholders in use: `{{ cookiecutter.project_name }}`, `project_slug`,
-`package_name`, `description`, `author_name`, `author_email`, `version`,
-`python_version`, `fastapi_version`.
+`description`, `author_name`, `author_email`, `version`, `python_version`,
+`fastapi_version`.
 
-- `project_slug` is kebab-case (`my-service`), `package_name` is snake_case
-  (`my_service`). Use `package_name` for Python imports and module paths,
-  `project_slug` for the directory, DB name, and pyproject `name`.
-- Directory names are templated too: `{{cookiecutter.package_name}}/` is a real
+- `project_slug` is kebab-case (`my-service`) and names the directory, the DB,
+  and pyproject `name`. There is **no `package_name`**: the Python package is
+  always the literal directory `app/`, so every import in every generated
+  project reads `from app...`.
+- Directory names are templated too: `{{cookiecutter.project_slug}}/` is a real
   directory name on disk. Quote paths in shell commands.
 - `pyproject.toml` uses Jinja control flow (`{% if %}`) for the FastAPI version
   pin — it is a **template, not valid TOML**. Same for any file with `{% %}`.
@@ -49,11 +50,10 @@ Placeholders in use: `{{ cookiecutter.project_name }}`, `project_slug`,
   generation. Adding a new expression without that wrapper makes cookiecutter
   either fail or silently eat it.
 
-- Import order in the generated project is **package-name dependent** unless
-  pinned — `fixture` sorts before `httpx`, `my_api_svc` between, `zqpkgzq` after.
-  `[tool.ruff.lint.isort] known-first-party` in `pyproject.toml` pins the package
-  into its own trailing section so one committed order is correct for every name.
-  Verify with at least two names that bracket the third-party distributions.
+- `[tool.ruff.lint.isort] known-first-party = ["app"]` in `pyproject.toml` pins
+  the package into its own trailing import section. Keep it — `app` sorts before
+  most third-party distributions, and only that pin keeps one committed import
+  order correct.
 
 ## Verifying a Change
 
@@ -62,13 +62,13 @@ in place. Always generate a fixture project and run the real checks against it:
 
 ```bash
 rm -rf /tmp/final && uvx cookiecutter --no-input --output-dir /tmp/final . \
-  project_name="Test Service" project_slug="fixture" package_name="fixture" \
+  project_name="Test Service" project_slug="fixture" \
   description="Test" author_name="T" author_email="t@t.com" version="0.1.0" \
   python_version="3.13" \
   && cd /tmp/final/fixture && uv sync \
-  && uv run ruff check fixture tests \
-  && uv run ruff format --check fixture tests \
-  && uv run mypy --strict fixture tests \
+  && uv run ruff check app tests \
+  && uv run ruff format --check app tests \
+  && uv run mypy --strict app tests \
   && uv run pytest -v
 ```
 
@@ -78,37 +78,57 @@ import, so ordering there matters).
 
 ## Generated Project Architecture
 
-Feature-based modules under `{{ cookiecutter.package_name }}/modules/`:
+Feature-based modules under `app/modules/`. Each layer is a **package** from
+the first file, re-exporting its public names from `__init__.py`:
 
-| File | Responsibility |
+| Package / file | Responsibility |
 |---|---|
-| `routes.py` | HTTP layer — thin, no DB or business logic |
-| `service.py` | Use cases: classes with a single `execute()` |
-| `crud.py` | Repository adapters wrapping `AsyncSession`, data access only |
-| `models.py` | SQLAlchemy 2.0 ORM entities |
-| `schemas.py` | Pydantic API boundaries + `Envelope[T]` aliases |
+| `routes/` | HTTP layer — thin, no DB or business logic; one router per file |
+| `usecases/` | Use cases: one class with a single `execute()` per file |
+| `repositories/` | Repository adapters wrapping `AsyncSession`, data access only |
+| `models/` | SQLAlchemy 2.0 ORM entities, one per file |
+| `schemas/` | Pydantic API boundaries + `Envelope[T]` aliases |
 | `deps.py` | FastAPI dependencies (`CurrentUser`, `SuperUser`) |
 | `admin.py` | SQLAdmin `ModelView`s + `register_admin()` |
+| `metrics.py` | Prometheus `Counter`/`Histogram`/`Gauge` for business events in this module; use cases call them after state changes |
 
-`core/` — cross-cutting: `config`, `database`, `security`, `schemas`,
-`response`, `exceptions`, `exception_handlers`, `pagination`, `constants`,
-`logging_conf`, `admin_auth`, and the `health/` package.
-`infrastructure/` — external integrations: `cache`, `email`, `i18n`,
-`ratelimit`, `tasks`.
-`main.py` is the app factory (`create_app()`); `api.py` mounts module routers.
+**Always use full, explicit names** — `database/` not `db/`, `repositories/`
+not `crud/`, `usecases/` not `service/`. No abbreviations except the
+well-established ones (`http/`, `jwt`, `api`).
+
+Cross-cutting concerns are named packages at the package root — there is no
+`core/`:
+
+| Package | Holds |
+|---|---|
+| `config/` | `settings.py` (pydantic-settings), `constants.py` |
+| `database/` | `base.py` (DeclarativeBase), `engine.py`, `session.py` |
+| `security/` | `jwt.py`, `passwords.py`, `constants.py` |
+| `exceptions/` | `errors.py` (`AppError` hierarchy), `handlers.py` |
+| `http/` | `schemas.py`, `response.py`, `pagination.py`, `openapi.py`, `net.py` |
+| `middleware/` | `request_context.py`, `rate_limit_headers.py` |
+| `observability/` | `logging.py`, `metrics.py` (Prometheus), `tracing.py` (OTel) |
+| `health/` | the `/live`, `/ready`, `/health` probes |
+| `utils/` | `datetime.py` (`utcnow()`, `UTC`) — cross-cutting helpers with no home of their own |
+
+`infrastructure/` — external integrations: `admin_auth`, `cache`, `email`,
+`i18n`, `ratelimit`, `tasks`.
+`application.py` is the app factory (`create_app()`); `main.py` is the two-line
+ASGI entrypoint; `api.py` mounts module routers **at the root** — there is no
+`/api` prefix and no `API_PREFIX` setting.
 
 **Two response contracts — do not mix them:**
 
 1. **API routes** always return the envelope (`success`/`data`/`message`/
-   `errors`/`meta`) via `core.response` helpers. Exception handlers wrap
+   `errors`/`meta`) via `http.response` helpers. Exception handlers wrap
    `AppError`, `RequestValidationError`, `StarletteHTTPException`, and bare
    `Exception` into the same shape.
-2. **Health probes** (`/live`, `/ready`, `/health`, registered before the API
-   prefix) return **bare** bodies for k8s. They return a plain `JSONResponse` on
+2. **Health probes** (`/live`, `/ready`, `/health`, registered before the
+   module routers) return **bare** bodies for k8s. They return a plain `JSONResponse` on
    503 rather than raising, precisely so the envelope handlers don't re-wrap
    them. Tests assert the absence of envelope keys — keep it that way.
 
-The `responses=` map on a route is generated by `core.openapi.error_responses`
+The `responses=` map on a route is generated by `http.openapi.error_responses`
 from the `AppError` subclasses it can raise — so an error class's **docstring is
 its OpenAPI description and its default message**. It must be the first
 statement in the class body; placed after the attributes it is an expression,
@@ -119,14 +139,27 @@ Only three rate-limit strategies are valid: `fixed-window`, `moving-window`,
 `sliding-window` (`RateLimitStrategy` in `infrastructure/ratelimit.py`). Keep
 `.env.example` and the docs aligned with that enum.
 
+**Import style**: within a module (`modules/<name>/`), use relative imports. For
+anything outside the module boundary — cross-cutting packages (`app.config`,
+`app.database`, `app.security`, etc.) — use absolute imports (`from app.X import
+Y`). Never use `...` to escape a module; that is a signal to switch to absolute.
+The same rule governs the cross-cutting packages themselves: `.sibling` within
+`http/`, `app.exceptions.errors` to reach out of it. `grep -rn "^from \.\.\."
+app/modules/` in a generated project must come back empty.
+
+Each module's use cases instrument business events via the module's
+`metrics.py` (`from ..metrics import user_registrations_total`), called after the
+side effect succeeds or in every error path. HTTP-level instrumentation stays in
+`observability/metrics.py`.
+
 ## Keep In Sync
 
 A change to the generated app usually touches more than one file:
 
-- New setting → `core/config.py`, `.env.example`, `docs/configuration.md`
-- New module → `modules/<name>/`, `api.py`, `alembic/env.py` import,
-  a test file
-- New make target → `Makefile`, template `README.md`, `.claude/CLAUDE.md`
+- New setting → `config/settings.py`, `.env.example`, `docs/configuration.md`
+- New module → `modules/<name>/` (the full package set, including `metrics.py`),
+  `api.py`, an `alembic/env.py` import per entity, a test file
+- New make target → `Makefile`, template `README.md`, the shipped `.claude/CLAUDE.md`
 - Changed layout/conventions → `.claude/CLAUDE.md`, `.claude/skills/*/SKILL.md`,
   `docs/architecture.md`, both READMEs
 - Anything a client can observe — a field, status code, error code, header, or

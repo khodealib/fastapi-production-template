@@ -13,7 +13,7 @@ Generate async pytest tests for FastAPI endpoints.
    - `from typing import Any`
    - Import `AsyncClient` from httpx
    - Import `AsyncSession, async_sessionmaker` from sqlalchemy
-   - Import repositories/services from `{package}.modules.{module}`
+   - Import repositories/use cases from `app.modules.{module}`
 
 2. Helper functions pattern:
    ```python
@@ -34,7 +34,7 @@ Generate async pytest tests for FastAPI endpoints.
 
    async def _register(client: AsyncClient, email: str = EMAIL) -> Payload:
        resp = await client.post(
-           "/api/auth/register", json=_register_payload(email=email)
+           "/auth/register", json=_register_payload(email=email)
        )
        assert resp.status_code == 201
        return Payload(resp.json())
@@ -44,7 +44,7 @@ Generate async pytest tests for FastAPI endpoints.
        client: AsyncClient, email: str = EMAIL, password: str = PASSWORD
    ) -> Payload:
        resp = await client.post(
-           "/api/auth/token",
+           "/auth/token",
            data={"username": email, "password": password},
        )
        assert resp.status_code == 200
@@ -60,7 +60,7 @@ Generate async pytest tests for FastAPI endpoints.
        headers = {"Authorization": f"Bearer {tokens['access_token']}"}
 
        # Act
-       resp = await client.get("/api/{module}", headers=headers)
+       resp = await client.get("/{module}", headers=headers)
 
        # Assert
        assert resp.status_code == 200
@@ -70,7 +70,7 @@ Generate async pytest tests for FastAPI endpoints.
 4. Auth test pattern:
    ```python
    async def test_{action}_requires_auth(client: AsyncClient) -> None:
-       resp = await client.get("/api/{module}")
+       resp = await client.get("/{module}")
        assert resp.status_code == 401
 
 
@@ -81,7 +81,7 @@ Generate async pytest tests for FastAPI endpoints.
        await _register(client)
        tokens = await _login(client)
        resp = await client.get(
-           "/api/{module}",
+           "/{module}",
            headers={"Authorization": f"Bearer {tokens['access_token']}"}
        )
        assert resp.status_code == 403  # Not superuser

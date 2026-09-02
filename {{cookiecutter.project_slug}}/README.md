@@ -48,21 +48,46 @@ make verify                 # ruff + mypy + pytest
 
 ## Architecture
 
+The Python package is always named `app` — the directory name does not change
+with the project name.
+
 ```
-{{ cookiecutter.package_name }}/
+app/
 ├── api.py                  # central router — mounts module routers
-├── main.py                 # app factory — middleware + admin + error handling
-├── middleware.py           # request context + rate-limit headers
-├── core/
-│   ├── config.py           # pydantic-settings (env vars → typed config)
-│   ├── database.py         # async engine, session dependency
-│   ├── security.py         # JWT encode/decode, argon2 hashing
-│   ├── exceptions.py       # AppError hierarchy
+├── main.py                 # ASGI entrypoint (`app = create_app()`)
+├── application.py          # app factory — middleware + admin + error handling
+├── config/
+│   ├── settings.py         # pydantic-settings (env vars → typed config)
+│   └── constants.py        # Environment enum and friends
+├── database/
+│   ├── base.py             # DeclarativeBase + naming convention
+│   ├── engine.py           # async engine + dispose_engine
+│   └── session.py          # SessionFactory, get_session, Session
+├── security/
+│   ├── jwt.py              # JWT encode/decode
+│   ├── passwords.py        # argon2 hashing
+│   └── constants.py        # token type / scheme discriminators
+├── exceptions/
+│   ├── errors.py           # AppError hierarchy
+│   └── handlers.py         # envelope-rendering exception handlers
+├── http/
 │   ├── schemas.py          # CustomModel base + envelope types
-│   ├── health/             # /health, /live probes
+│   ├── response.py         # envelope response helpers
 │   ├── pagination.py       # Page / page_params helpers
-│   └── response.py         # envelope response helpers
+│   ├── openapi.py          # error_responses builder
+│   └── net.py              # client_ip behind proxies
+├── middleware/
+│   ├── request_context.py  # request_id + structured request log
+│   └── rate_limit_headers.py
+├── observability/
+│   ├── logging.py          # structlog configuration
+│   ├── metrics.py          # Prometheus, exposed at /metrics
+│   └── tracing.py          # OpenTelemetry
+├── health/                 # /live, /ready, /health probes
+├── utils/
+│   └── datetime.py         # utcnow() — the one source of "now"
 ├── infrastructure/
+│   ├── admin_auth.py       # SQLAdmin authentication backend
 │   ├── cache.py            # Redis helpers (no-op without REDIS_URL)
 │   ├── email.py            # SMTP sender + Jinja2 templates
 │   ├── i18n.py             # gettext internationalization
@@ -70,33 +95,44 @@ make verify                 # ruff + mypy + pytest
 │   └── tasks.py            # Celery app + email task
 ├── modules/
 │   └── users/
-│       ├── models.py       # SQLAlchemy ORM entities
-│       ├── schemas.py      # Pydantic API boundaries
-│       ├── crud.py         # Repository adapters (data access)
-│       ├── service.py      # Use cases (business logic)
-│       ├── interactor.py   # Multi-usecase orchestration
+│       ├── models/         # SQLAlchemy ORM entities, one per file
+│       ├── schemas/        # Pydantic API boundaries
+│       ├── repositories/   # Repository adapters (data access)
+│       ├── usecases/       # Use cases (business logic), one per file
+│       ├── routes/         # HTTP layer (thin), one router per file
 │       ├── deps.py         # CurrentUser / SuperUser dependencies
-│       ├── routes.py       # HTTP layer (thin)
+│       ├── metrics.py      # Prometheus counters for this module's events
 │       └── admin.py        # SQLAdmin views
 └── tests/
 ```
 
 ### Layer Rules
 
-- **routes.py** — parses request, calls use case, returns response. No DB logic.
-- **service.py** — use cases as classes with `execute()` method.
-- **crud.py** — repository adapters wrapping `AsyncSession`. Data access only.
-- **interactor.py** — orchestrates multiple services for complex flows.
-- **models.py** — SQLAlchemy ORM entities (the model IS the entity).
+- **routes/** — parses request, calls use case, returns response. No DB logic.
+- **usecases/** — one class per file, each with a single `execute()`.
+- **repositories/** — adapters wrapping `AsyncSession`. Data access only.
+- **models/** — SQLAlchemy ORM entities (the model IS the entity).
+
+Names are spelled out in full: `database/` not `db/`, `repositories/` not
+`crud/`, `usecases/` not `services/`. The only abbreviations are the
+established ones — `http`, `jwt`, `api`.
+
+`modules/<name>/` is the import boundary: relative imports inside it, absolute
+`from app.X import Y` for anything outside. A `from ...` means the import
+escaped the module and should have been absolute.
+
+Routers mount at the root: `/auth/token`, `/users/me`. There is no `/api`
+prefix.
 
 ### Adding a New Module
 
-1. Create `modules/{name}/` with `models.py`, `schemas.py`, `crud.py`, `service.py`, `routes.py`, `deps.py`
-2. Add routes in `routes.py`:
+1. Create `modules/{name}/` with `models/`, `schemas/`, `repositories/`,
+   `usecases/`, `routes/`, `deps.py`, and `metrics.py`
+2. Add a router under `routes/`:
    ```python
    from fastapi import APIRouter, Depends
-   from ...core.database import get_session
-   from ...core.response import success_response, paginated_response
+   from app.database.session import Session
+   from app.http.response import success_response, paginated_response
 
    {name}_router = APIRouter(prefix="/{name}", tags=["{name}"])
 
@@ -112,7 +148,8 @@ make verify                 # ruff + mypy + pytest
        )
        return paginated_response(items, total, params, request=request)
    ```
-3. Register in `api.py`:
+3. Register the module's models in `alembic/env.py`, then mount the router in
+   `api.py`:
    ```python
    from .modules.{name}.routes import {name}_router
    api_router.include_router({name}_router)
@@ -131,6 +168,7 @@ make verify                 # ruff + mypy + pytest
 | Cache | Redis helpers (memory fallback) |
 | i18n | gettext + Babel |
 | Logging | structlog (JSON prod, console dev) |
+| Metrics / tracing | Prometheus at `/metrics` (`ENABLE_METRICS`) + OpenTelemetry (`ENABLE_TRACING`, opt-in) |
 | Rate limiting | `limits` library (3 strategies) |
 | Security | CORS, TrustedHost, GZip |
 
@@ -206,7 +244,7 @@ HTTP status codes remain accurate (200, 201, 400, 401, 404, 409, 422, 500).
 ## Rate Limiting
 
 ```python
-from {{ cookiecutter.package_name }}.infrastructure.ratelimit import rate_limit
+from app.infrastructure.ratelimit import rate_limit
 
 @router.post("/login", dependencies=[Depends(rate_limit("5/minute", key_prefix="login"))])
 async def login(...): ...

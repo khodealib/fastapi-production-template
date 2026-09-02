@@ -10,31 +10,40 @@ the whole repository to rediscover the conventions.
 
 ## Layout
 
-Modules live under `modules/<name>/`, one file per responsibility:
-`routes.py` (HTTP only), `service.py` (use cases — classes with `execute()`),
-`crud.py` (repository adapters over `AsyncSession`), `models.py` (SQLAlchemy
-2.0), `schemas.py` (Pydantic), `deps.py` (FastAPI dependencies, including the
-repository providers), `admin.py` (SQLAdmin views).
+The Python package is always `app/`. Modules live under `app/modules/<name>/`,
+one package per responsibility, each re-exporting from its `__init__.py`:
+`routes/` (HTTP only), `usecases/` (classes with `execute()`, one per file),
+`repositories/` (adapters over `AsyncSession`), `models/` (SQLAlchemy 2.0),
+`schemas/` (Pydantic), plus `deps.py` (FastAPI dependencies, including the
+repository providers) and `admin.py` (SQLAdmin views).
 
-Dependencies point one way: `routes → service → crud → models`. Routes never
-touch a session directly; services never import FastAPI.
+Dependencies point one way: `routes → usecases → repositories → models`. Routes
+never touch a session directly; use cases never import FastAPI.
 
-`core/` is cross-cutting (config, database, security, response, exceptions,
-openapi, pagination, health). `infrastructure/` is external integrations (cache,
-email, i18n, ratelimit, tasks). `api.py` mounts module routers; `main.py` is the
-app factory.
+Cross-cutting concerns are named packages at the package root: `config/`
+(`settings.py`, `constants.py`), `database/` (`base.py`, `engine.py`,
+`session.py`), `security/` (`jwt.py`, `passwords.py`, `constants.py`),
+`exceptions/` (`errors.py`, `handlers.py`), `http/` (`schemas.py`,
+`response.py`, `pagination.py`, `openapi.py`, `net.py`), `middleware/`,
+`observability/` (`logging.py`, `metrics.py`, `tracing.py`), `health/`.
+`infrastructure/` is external integrations (admin_auth, cache, email, i18n,
+ratelimit, tasks). `api.py` mounts module routers; `application.py` is the app
+factory and `main.py` the ASGI entrypoint.
+
+Use full, explicit names — `database/` not `db/`, `repositories/` not `crud/`.
+Routers mount at the root: there is no `/api` prefix.
 
 ## Rules you cannot break
 
-- **Every API response goes through the envelope** — use the `core.response`
+- **Every API response goes through the envelope** — use the `http.response`
   helpers (`success_response`, `paginated_response`, `validation_error_response`).
-  Declare `Envelope[T]` / `EnvelopeList[T]` aliases in `schemas.py` and use them
+  Declare `Envelope[T]` / `EnvelopeList[T]` aliases in `schemas/` and use them
   as `response_model`.
 - **Health probes are the one exception.** `/live`, `/ready`, `/health` sit
-  outside `API_PREFIX` and return bare k8s bodies, returning a plain
+  outside `api_router` and return bare k8s bodies, returning a plain
   `JSONResponse(503)` rather than raising so the handlers cannot re-wrap them.
   Tests assert the envelope keys are absent. Leave them alone.
-- **Document the errors a route raises** with `core.openapi.error_responses`,
+- **Document the errors a route raises** with `http.openapi.error_responses`,
   passing the exception classes; add `validation=True` where a body, path or
   query parameter can fail. Never document the success shape twice —
   `response_model` already defines it.

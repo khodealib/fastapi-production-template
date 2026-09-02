@@ -6,7 +6,7 @@ contract behind these shapes, see [API Contract](api-contract.md).
 ## 1. Register
 
 ```bash
-curl -X POST http://localhost:8000/api/auth/register \
+curl -X POST http://localhost:8000/auth/register \
   -H "Content-Type: application/json" \
   -d '{"email": "user@example.com", "password": "StrongPass1!", "full_name": "Test User"}'
 ```
@@ -38,7 +38,7 @@ Form-encoded, not JSON — the endpoint follows the OAuth2 password form, so the
 email goes in a field named `username`.
 
 ```bash
-curl -X POST http://localhost:8000/api/auth/token \
+curl -X POST http://localhost:8000/auth/token \
   -d "username=user@example.com&password=StrongPass1!"
 ```
 
@@ -60,7 +60,7 @@ curl -X POST http://localhost:8000/api/auth/token \
 ## 3. Call a protected endpoint
 
 ```bash
-curl http://localhost:8000/api/users/me \
+curl http://localhost:8000/users/me \
   -H "Authorization: Bearer <access_token>"
 ```
 
@@ -78,7 +78,7 @@ curl http://localhost:8000/api/users/me \
 ## 4. List users (superuser only)
 
 ```bash
-curl "http://localhost:8000/api/users?page=1&page_size=20" \
+curl "http://localhost:8000/users?page=1&page_size=20" \
   -H "Authorization: Bearer <admin_access_token>"
 ```
 
@@ -101,7 +101,7 @@ As a non-superuser the same call returns `403` with a `forbidden` error code.
 
 ## 5. Check health
 
-The probes sit outside `/api` and are deliberately **not** enveloped — they are
+The probes sit outside the API and are deliberately **not** enveloped — they are
 read by Kubernetes, not by clients.
 
 ```bash

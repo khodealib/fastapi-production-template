@@ -19,9 +19,9 @@ import pytest
 import pytest_asyncio
 from httpx import ASGITransport, AsyncClient
 
-from {{ cookiecutter.package_name }}.core.database import Base, SessionFactory, engine
-from {{ cookiecutter.package_name }}.infrastructure.ratelimit import get_rate_limiter, get_storage
-from {{ cookiecutter.package_name }}.main import app
+from app.database import Base, SessionFactory, engine
+from app.infrastructure.ratelimit import get_rate_limiter, get_storage
+from app.main import app
 
 if TYPE_CHECKING:
     from collections.abc import AsyncIterator

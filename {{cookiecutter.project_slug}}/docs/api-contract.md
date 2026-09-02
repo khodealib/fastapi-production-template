@@ -9,7 +9,7 @@ the fields mean and what to do about them.
 
 ## The envelope
 
-Every response under `/api` — success or failure — has the same top level.
+Every response under the API — success or failure — has the same top level.
 
 ```json
 {
@@ -64,7 +64,7 @@ Request a page with the `page` and `page_size` query parameters — the same nam
 you get back, so nothing needs translating:
 
 ```
-GET /api/users?page=2&page_size=50
+GET /users?page=2&page_size=50
 ```
 
 `page` starts at 1. `page_size` is capped at 100; asking for more is a 422, not
@@ -178,6 +178,23 @@ bodies, because Kubernetes reads them, not your client:
 They return `503` with the same shape when a dependency is down. Do not send
 them through your envelope parser.
 
+### `GET /metrics`
+
+Prometheus text format, and likewise outside the envelope. It is absent from
+`/openapi.json` on purpose — it is an operational endpoint, not part of the API.
+
+Alongside the HTTP series, each module exports its own business counters. The
+`users` module publishes:
+
+| Metric | Labels | Meaning |
+|---|---|---|
+| `user_registrations_total` | — | accounts created |
+| `user_authentication_attempts_total` | `outcome` = `success` \| `failure` | login attempts |
+| `token_refresh_total` | `outcome` = `success` \| `failure` | refresh-token rotations |
+
+Unauthenticated by default: restrict it at the load balancer or ingress in
+production, or set `ENABLE_METRICS=false` to disable it entirely.
+
 ## Conventions across every endpoint
 
 **Timestamps** are ISO 8601 in UTC with an explicit offset:
@@ -198,10 +215,10 @@ resource is absent, not `null`.
 
 ## Authentication
 
-Get a token pair from `POST /api/auth/token`, form-encoded, not JSON:
+Get a token pair from `POST /auth/token`, form-encoded, not JSON:
 
 ```
-POST /api/auth/token
+POST /auth/token
 Content-Type: application/x-www-form-urlencoded
 
 username=user@example.com&password=StrongPass1!
@@ -232,7 +249,7 @@ Authorization: Bearer eyJ…
 ```
 
 `expires_in` is seconds. When the access token expires, exchange the refresh
-token at `POST /api/auth/refresh` — this one takes JSON:
+token at `POST /auth/refresh` — this one takes JSON:
 
 ```json
 { "refresh_token": "eyJ…" }
@@ -252,7 +269,7 @@ it can raise, with an example body per error code, and `Retry-After` on the
 429s. Generate a typed client from it rather than hand-writing one.
 
 ```bash
-npx openapi-typescript http://localhost:8000/openapi.json -o src/api/schema.d.ts
+npx openapi-typescript http://localhost:8000/openapi.json -o src/schema.d.ts
 ```
 
 Note that a generated client gives you types, not behaviour. Refresh rotation,

@@ -20,8 +20,8 @@ lint:
   before_script:
     - uv sync
   script:
-    - uv run ruff check {{ cookiecutter.package_name }} tests
-    - uv run ruff format --check {{ cookiecutter.package_name }} tests
+    - uv run ruff check app tests
+    - uv run ruff format --check app tests
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -33,7 +33,7 @@ typecheck:
   before_script:
     - uv sync
   script:
-    - uv run mypy --strict {{ cookiecutter.package_name }} tests
+    - uv run mypy --strict app tests
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"
@@ -47,7 +47,7 @@ security:
   # Through `uv run`, never `uvx`: bandit parses with the interpreter it runs
   # on, and silently skips files it cannot parse while still exiting 0.
   script:
-    - uv run bandit -c pyproject.toml -q -r {{ cookiecutter.package_name }}
+    - uv run bandit -c pyproject.toml -q -r app
   rules:
     - if: $CI_PIPELINE_SOURCE == "merge_request_event"
     - if: $CI_COMMIT_BRANCH == "main"

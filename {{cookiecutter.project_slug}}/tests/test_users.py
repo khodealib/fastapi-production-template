@@ -3,8 +3,8 @@ from typing import Any
 from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from {{ cookiecutter.package_name }}.modules.users.crud import UserRepository
-from {{ cookiecutter.package_name }}.modules.users.service import RegisterUser
+from app.modules.users.repositories import UserRepository
+from app.modules.users.usecases import RegisterUser
 
 PASSWORD = "SuperS3cret!"
 EMAIL = "alice@example.com"
@@ -23,7 +23,7 @@ def _register_payload(**overrides: str | None) -> Payload:
 
 
 async def _register(client: AsyncClient, email: str = EMAIL) -> Payload:
-    resp = await client.post("/api/auth/register", json=_register_payload(email=email))
+    resp = await client.post("/auth/register", json=_register_payload(email=email))
     assert resp.status_code == 201
     body = resp.json()
     assert body["success"] is True
@@ -36,7 +36,7 @@ async def _login(
     client: AsyncClient, email: str = EMAIL, password: str = PASSWORD
 ) -> Payload:
     resp = await client.post(
-        "/api/auth/token",
+        "/auth/token",
         data={"username": email, "password": password},
     )
     assert resp.status_code == 200
@@ -73,7 +73,7 @@ async def test_register_creates_user(client: AsyncClient) -> None:
 
 async def test_register_rejects_duplicate_email(client: AsyncClient) -> None:
     await _register(client)
-    resp = await client.post("/api/auth/register", json=_register_payload())
+    resp = await client.post("/auth/register", json=_register_payload())
     assert resp.status_code == 409
     body = resp.json()
     assert body["success"] is False
@@ -82,7 +82,7 @@ async def test_register_rejects_duplicate_email(client: AsyncClient) -> None:
 
 async def test_register_rejects_weak_password(client: AsyncClient) -> None:
     resp = await client.post(
-        "/api/auth/register", json=_register_payload(password="weakpassword")
+        "/auth/register", json=_register_payload(password="weakpassword")
     )
     assert resp.status_code == 422
     body = resp.json()
@@ -105,7 +105,7 @@ async def test_login_returns_token_pair(client: AsyncClient) -> None:
 async def test_login_wrong_password_returns_401(client: AsyncClient) -> None:
     await _register(client)
     resp = await client.post(
-        "/api/auth/token",
+        "/auth/token",
         data={"username": EMAIL, "password": "WrongPass1!"},
     )
     assert resp.status_code == 401
@@ -119,14 +119,14 @@ async def test_me_requires_and_returns_user(client: AsyncClient) -> None:
     tokens = await _login(client)
     headers = {"Authorization": f"Bearer {tokens['access_token']}"}
 
-    resp = await client.get("/api/users/me", headers=headers)
+    resp = await client.get("/users/me", headers=headers)
     assert resp.status_code == 200
     body = resp.json()
     assert body["success"] is True
     assert body["data"]["email"] == EMAIL
     assert body["message"] == "Current user retrieved"
 
-    anon = await client.get("/api/users/me")
+    anon = await client.get("/users/me")
     assert anon.status_code == 401
     body = anon.json()
     assert body["success"] is False
@@ -138,7 +138,7 @@ async def test_refresh_rotates_tokens(client: AsyncClient) -> None:
     tokens = await _login(client)
 
     resp = await client.post(
-        "/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
+        "/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
     assert resp.status_code == 200
     body = resp.json()
@@ -148,7 +148,7 @@ async def test_refresh_rotates_tokens(client: AsyncClient) -> None:
 
     # Old (revoked) refresh token must be rejected on reuse.
     reuse = await client.post(
-        "/api/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
+        "/auth/refresh", json={"refresh_token": tokens["refresh_token"]}
     )
     assert reuse.status_code == 401
     body = reuse.json()
@@ -157,7 +157,7 @@ async def test_refresh_rotates_tokens(client: AsyncClient) -> None:
 
 
 async def test_refresh_rejects_garbage(client: AsyncClient) -> None:
-    resp = await client.post("/api/auth/refresh", json={"refresh_token": "not-a-jwt"})
+    resp = await client.post("/auth/refresh", json={"refresh_token": "not-a-jwt"})
     assert resp.status_code == 401
     body = resp.json()
     assert body["success"] is False
@@ -177,7 +177,7 @@ async def test_users_list_requires_superuser(
     # Plain user: forbidden.
     tokens = await _login(client)
     resp = await client.get(
-        "/api/users", headers={"Authorization": f"Bearer {tokens['access_token']}"}
+        "/users", headers={"Authorization": f"Bearer {tokens['access_token']}"}
     )
     assert resp.status_code == 403
     body = resp.json()
@@ -187,7 +187,7 @@ async def test_users_list_requires_superuser(
     # Superuser: allowed.
     admin = await _login(client, email="admin@example.com")
     resp = await client.get(
-        "/api/users", headers={"Authorization": f"Bearer {admin['access_token']}"}
+        "/users", headers={"Authorization": f"Bearer {admin['access_token']}"}
     )
     assert resp.status_code == 200
     body = resp.json()

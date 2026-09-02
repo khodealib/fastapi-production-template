@@ -14,10 +14,19 @@ make migrate      # alembic upgrade head
 make makemigrations m="msg"   # autogenerate a migration
 make worker       # Celery worker
 make test         # pytest
+make coverage     # pytest with HTML report → htmlcov/index.html
+make watch        # re-run tests on file change (TDD)
+make schema       # export openapi.json without starting the server
+make dev-tools    # start pgAdmin (port 5050) + Mailpit (port 8025)
+make clean        # remove caches and build artefacts
 make security     # bandit static security scan
 make verify       # ruff + mypy + bandit + pytest (what CI runs)
 make lint         # ruff check + format check + mypy
 make format       # ruff check --fix + ruff format
+make new-module name=X   # scaffold a new feature module
+make test-fast           # run tests in parallel (faster on multi-core)
+make docs                # serve MkDocs documentation locally
+make seed                # load fixtures/users.json into the database
 ```
 
 ## Orchestration
@@ -54,9 +63,9 @@ carry their own brief, so none of them needs this file loaded.
 For every row above the `coder` line, produce the plan before delegating. It
 must state:
 
-1. Which files change, and in what order. A module is `routes.py`, `service.py`,
-   `crud.py`, `models.py`, `schemas.py`, `deps.py`, `admin.py` — say which are
-   involved.
+1. Which files change, and in what order. A module is `routes/`, `usecases/`,
+   `repositories/`, `models/`, `schemas/`, `deps.py`, `admin.py`, `metrics.py` —
+   say which are involved.
 2. Every place that must move together: a new setting also touches
    `.env.example` and `docs/configuration.md`; a new model also needs a
    migration and an `alembic/env.py` import; a new error also belongs in the
@@ -79,39 +88,79 @@ copying an existing file, and update it when the convention it encodes changes.
 
 ## Architecture
 
-Feature-based modules under `{{ cookiecutter.package_name }}/modules/`. Each module follows:
-- `routes.py` → HTTP layer (thin; no DB or business logic)
-- `service.py` → use cases (classes with `execute()`)
-- `crud.py` → repository adapters (data access only)
-- `models.py` → SQLAlchemy ORM entities
-- `schemas.py` → Pydantic API boundaries
+The Python package is always `app/`, whatever the project is called.
+
+Feature-based modules under `app/modules/`. Each module is a package of
+packages — one responsibility per file, each package re-exporting from its
+`__init__.py`:
+- `routes/` → HTTP layer (thin; no DB or business logic), one router per file
+- `usecases/` → use cases (classes with `execute()`), one per file
+- `repositories/` → repository adapters (data access only), one per entity
+- `models/` → SQLAlchemy ORM entities, one per file
+- `schemas/` → Pydantic API boundaries, grouped by resource
 - `deps.py` → FastAPI dependencies, including repository providers
 - `admin.py` → SQLAdmin `ModelView`s + `register_admin()`
+- `metrics.py` → Prometheus `Counter`/`Histogram`/`Gauge` for business events in
+  this module; use cases call them after state changes
 
-Keep every use case in `service.py` while the module is small. Split it into a
-`usecases/` package — one file per use case, re-exported from its `__init__.py`
-— once `service.py` passes roughly 300 lines or 8 use cases, whichever comes
-first. Routers get the same treatment at the same threshold. Do not start a
-module in the split layout: a package of six-line files is harder to read than
-one file.
+This is the layout from the first file: a new module starts split, it does not
+grow into it.
 
-`core/` holds cross-cutting: config, database, security, exceptions, pagination,
-health, **response helpers**, and `openapi.py` (error documentation).
-`infrastructure/` holds external integrations: cache, email, i18n, rate limiting, tasks.
-`main.py` is the app factory (`create_app()`); `api.py` mounts every module router.
+**Always use full, explicit names** — `database/` not `db/`, `repositories/`
+not `crud/`, `usecases/` not `service/`. No abbreviations except the
+well-established ones (`http/`, `jwt`, `api`).
 
-Dependency direction is one-way: `routes → service → crud → models`. Routes never
-touch a repository's session directly, services never import FastAPI.
+Cross-cutting concerns live in named packages at the package root, not in a
+catch-all `core/`:
+- `config/` → `settings.py` (pydantic-settings), `constants.py`
+- `database/` → `base.py` (DeclarativeBase), `engine.py`, `session.py`
+- `security/` → `jwt.py`, `passwords.py`, `constants.py`
+- `exceptions/` → `errors.py` (the `AppError` hierarchy), `handlers.py`
+- `http/` → the response contract: `schemas.py`, `response.py`, `pagination.py`,
+  `openapi.py`, `net.py`
+- `middleware/` → `request_context.py`, `rate_limit_headers.py`
+- `observability/` → `logging.py`, `metrics.py` (Prometheus at `/metrics`,
+  gated by `ENABLE_METRICS`), `tracing.py` (OpenTelemetry, gated by
+  `ENABLE_TRACING`; `setup_tracing` returns the provider and the lifespan in
+  `application.py` shuts it down)
+- `health/` → the `/live`, `/ready`, `/health` probes
+- `utils/` → small cross-cutting helpers with no home of their own —
+  `datetime.py` (`utcnow()`, `UTC`). Not a dumping ground: anything with a real
+  subject gets its own package
+
+`infrastructure/` holds external integrations: cache, email, i18n, rate limiting,
+tasks, and the SQLAdmin auth backend. `application.py` is the app factory
+(`create_app()`); `main.py` is the two-line ASGI entrypoint; `api.py` mounts
+every module router.
+
+Routers mount at the root — `/auth/token`, `/users/me`. There is no `/api`
+prefix and no `API_PREFIX` setting.
+
+Dependency direction is one-way: `routes → usecases → repositories → models`.
+Routes never touch a repository's session directly, use cases never import
+FastAPI.
 
 ## Conventions
 
-- Session type: `Session = Annotated[AsyncSession, Depends(get_session)]`
+- **Import style**: within a module (`modules/<name>/`), use relative imports.
+  For anything outside the module boundary — cross-cutting packages
+  (`app.config`, `app.database`, `app.security`, etc.) — use absolute imports
+  (`from app.X import Y`). Never use `...` to escape a module; that is a signal
+  to switch to absolute. The same rule applies to the cross-cutting packages
+  themselves: `.sibling` inside `http/`, `app.exceptions.errors` to reach out
+- Each module's use cases instrument business events via the module's
+  `metrics.py`. Import the metric relatively (`from ..metrics import
+  user_registrations_total`) and call it after the side effect succeeds or in
+  every error path. Do not instrument HTTP-level events in use cases —
+  `observability/metrics.py` handles those
+- Session type: `Session` from `database.session` — already
+  `Annotated[AsyncSession, Depends(get_session)]`
 - Use cases are classes with an `execute()` method
 - Repositories wrap `AsyncSession`, no business logic. `get_session` commits on
   success and rolls back on exception — repositories `flush()`, they don't commit
 - Rate limiting is layered. `api_router` carries a global budget
   (`RATE_LIMIT_GLOBAL`, one bucket per client across all endpoints via
-  `per_path=False`), so **every** `/api` route can return 429 and documents it.
+  `per_path=False`), so **every** API route can return 429 and documents it.
   A route needing something stricter declares its own dependency:
   ```python
   strict = rate_limit(
@@ -125,8 +174,8 @@ touch a repository's session directly, services never import FastAPI.
   Router dependencies run before the route's own, so the narrower limit is the
   one reported in the `X-RateLimit-*` headers. Valid strategies:
   `fixed-window`, `moving-window`, `sliding-window`. Health probes sit outside
-  `API_PREFIX` and stay unthrottled
-- Callers are identified by `core.net.client_ip`, used by both the limiter and
+  `api_router` and stay unthrottled
+- Callers are identified by `http.net.client_ip`, used by both the limiter and
   the request log. It reads `X-Forwarded-For` only when `TRUSTED_PROXY_HOPS` is
   greater than zero, and takes the entry that many hops from the right — the
   ones your own proxies appended. **`TRUSTED_PROXY_HOPS` must equal the real
@@ -135,7 +184,7 @@ touch a repository's session directly, services never import FastAPI.
   high and the value is attacker-supplied again. Behind one nginx it is 1
 - Errors inherit from `AppError` with `status_code` and `code`; raise them, don't
   return them — `register_exception_handlers` renders the envelope
-- **All API responses use the envelope pattern** — see `core.response` helpers:
+- **All API responses use the envelope pattern** — see `http.response` helpers:
   - `success_response(data, message, request)` — single resource
   - `paginated_response(items, total, params, message, request)` — lists
   - `error_response(exc, request)` — errors (auto-handled by exception handlers)
@@ -143,12 +192,12 @@ touch a repository's session directly, services never import FastAPI.
 - `meta` carries only facts about the request (`request_id`). Pagination is a
   **top-level** member of `EnvelopeList[T]` — it describes the payload, and
   only list responses have one
-- Response models: `Envelope[T]`, `EnvelopeList[T]` from `core.schemas`; declare
+- Response models: `Envelope[T]`, `EnvelopeList[T]` from `http.schemas`; declare
   an alias per schema (`UserReadEnvelope = Envelope[UserRead]`) and use it as
   `response_model`
 - Request ID: `request.state.request_id` for tracing (set by `RequestContextMiddleware`,
   echoed as the `X-Request-ID` header)
-- **Document the errors a route can raise** with `core.openapi.error_responses`,
+- **Document the errors a route can raise** with `http.openapi.error_responses`,
   which reads status code, error code and description off the exception class:
   ```python
   @users_router.get(
@@ -168,10 +217,11 @@ touch a repository's session directly, services never import FastAPI.
   query parameter, the dataclass field and the response member all use the
   same name, so nothing has to be translated between layers
 - Config is read once via `get_settings()` (`lru_cache`d) — never read `os.environ`
-  directly; add new knobs to `core/config.py` **and** `.env.example`
+  directly; add new knobs to `config/settings.py` **and** `.env.example`
 
 **Health probes are the one exception to the envelope.** `/live`, `/ready`, and
-`/health` are registered outside `API_PREFIX` and return bare k8s-shaped bodies.
+`/health` are registered before the module routers and return bare k8s-shaped
+bodies.
 They return a plain `JSONResponse(503)` instead of raising, so the envelope
 exception handlers can't re-wrap them. Tests assert that `success`/`data`/`meta`
 are absent — don't "fix" them into envelopes.
@@ -204,10 +254,13 @@ string flagged as a password is usually better as a named constant.
 
 ## Adding a Module
 
-1. `modules/<name>/` with the file set above
-2. Include its router in `api.py`
-3. Import its `models` in `alembic/env.py` so autogenerate sees the tables
-4. `make makemigrations m="add <name>"` then `make migrate`
-5. Register admin views in `main.py` if the module needs them
-6. Add `tests/test_<name>.py`
-7. Run `make verify`
+1. `modules/<name>/` with the package set above — `models/`, `schemas/`,
+   `repositories/`, `usecases/`, `routes/`, `deps.py`, each with an
+   `__init__.py` that re-exports its public names
+2. Add `<name>/metrics.py` with the module's business counters
+3. Include its router in `api.py`
+4. Import its models in `alembic/env.py` so autogenerate sees the tables
+5. `make makemigrations m="add <name>"` then `make migrate`
+6. Register admin views in `application.py` if the module needs them
+7. Add `tests/test_<name>.py`
+8. Run `make verify`

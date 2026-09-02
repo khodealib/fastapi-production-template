@@ -9,10 +9,11 @@ Generate Pydantic schemas for API boundaries.
 
 ## Instructions
 
-1. Create or update `modules/{module}/schemas.py` with:
+1. Create or update `modules/{module}/schemas/{resource}.py` with:
    - `from __future__ import annotations`
    - Import from `pydantic`
-   - Import `CustomModel` from `...core.schemas`
+   - Import `CustomModel` from `app.http.schemas`
+   - Re-export the schemas from `modules/{module}/schemas/__init__.py`
 
 2. Base schema pattern:
    ```python
@@ -21,7 +22,7 @@ Generate Pydantic schemas for API boundaries.
 
    from pydantic import EmailStr, Field, field_validator
 
-   from ...core.schemas import CustomModel
+   from app.http.schemas import CustomModel
    ```
 
 3. Create schema:

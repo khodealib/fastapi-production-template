@@ -27,7 +27,7 @@ services:
 
   api:
     build: .
-    command: uvicorn {{ cookiecutter.package_name }}.main:app --host 0.0.0.0 --port 8000 --reload
+    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@db:5432/{{ cookiecutter.project_slug }}
       REDIS_URL: redis://redis:6379/0
@@ -39,7 +39,7 @@ services:
     ports:
       - "8000:8000"
     volumes:
-      - ./{{ cookiecutter.package_name }}:/app/{{ cookiecutter.package_name }}
+      - ./app:/app/app
     depends_on:
       db:
         condition: service_healthy
@@ -48,7 +48,7 @@ services:
 
   worker:
     build: .
-    command: celery -A {{ cookiecutter.package_name }}.infrastructure.tasks.celery_app worker --loglevel=info
+    command: celery -A app.infrastructure.tasks.celery_app worker --loglevel=info
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@db:5432/{{ cookiecutter.project_slug }}
       REDIS_URL: redis://redis:6379/0
@@ -56,14 +56,14 @@ services:
     env_file:
       - .env
     volumes:
-      - ./{{ cookiecutter.package_name }}:/app/{{ cookiecutter.package_name }}
+      - ./app:/app/app
     depends_on:
       api:
         condition: service_started
 
   beat:
     build: .
-    command: celery -A {{ cookiecutter.package_name }}.infrastructure.tasks.celery_app beat --loglevel=info
+    command: celery -A app.infrastructure.tasks.celery_app beat --loglevel=info
     environment:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development

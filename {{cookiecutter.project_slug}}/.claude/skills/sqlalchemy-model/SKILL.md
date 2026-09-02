@@ -9,24 +9,23 @@ Generate a new SQLAlchemy ORM model.
 
 ## Instructions
 
-1. Create or update `modules/{module}/models.py` with:
+1. Create `modules/{module}/models/{entity}.py` — one entity per file — with:
    - `from __future__ import annotations`
    - Import from `sqlalchemy` and `sqlalchemy.orm`
-   - Import `Base` from `...core.database`
+   - Import `Base` from `app.database.base`
+   - Import `utcnow` from `app.utils.datetime` — never redefine it locally
+   - Re-export the entity from `modules/{module}/models/__init__.py`
 
 2. Model pattern:
    ```python
    from datetime import datetime
    from uuid import UUID, uuid4
-   from zoneinfo import ZoneInfo
 
    from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func, select
    from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-   UTC = ZoneInfo("UTC")
-
-   def _utcnow() -> datetime:
-       return datetime.now(UTC)
+   from app.database.base import Base
+   from app.utils.datetime import utcnow
 
 
    class {Model}(Base):
@@ -35,13 +34,13 @@ Generate a new SQLAlchemy ORM model.
        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
        # ... fields ...
        created_at: Mapped[datetime] = mapped_column(
-           DateTime(timezone=True), default=_utcnow, server_default=func.now()
+           DateTime(timezone=True), default=utcnow, server_default=func.now()
        )
        updated_at: Mapped[datetime] = mapped_column(
            DateTime(timezone=True),
-           default=_utcnow,
+           default=utcnow,
            server_default=func.now(),
-           onupdate=_utcnow,
+           onupdate=utcnow,
        )
    ```
 
@@ -67,9 +66,9 @@ Generate a new SQLAlchemy ORM model.
        return select(User).where(func.lower(User.email) == email.lower())
    ```
 
-5. Register models in `alembic/env.py`:
+5. Register each entity in `alembic/env.py` so autogenerate sees the table:
    ```python
-   from {package}.modules.{module} import models as _{module}_models  # noqa: F401
+   from app.modules.{module}.models import {Model} as _{Model}  # noqa: F401
    ```
 
 ## Conventions
@@ -81,3 +80,5 @@ Generate a new SQLAlchemy ORM model.
 - Foreign keys use `ondelete="CASCADE"` where appropriate
 - Index foreign key columns
 - Query helpers live at module level, not in the model class
+- One entity per file; a relationship to an entity in a sibling file imports it
+  under `TYPE_CHECKING` and names it as a string in `Mapped[...]`

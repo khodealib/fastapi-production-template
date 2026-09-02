@@ -4,15 +4,15 @@ from typing import Any
 
 from httpx import AsyncClient
 
-from {{ cookiecutter.package_name }}.core.config import get_settings
-from {{ cookiecutter.package_name }}.core.exceptions import (
+from app.config.settings import get_settings
+from app.exceptions.errors import (
     AppError,
     ConflictError,
     ForbiddenError,
     NotFoundError,
     RateLimitedError,
 )
-from {{ cookiecutter.package_name }}.core.openapi import describe, error_responses
+from app.http.openapi import describe, error_responses
 
 
 def test_error_class_docstrings_are_real_docstrings() -> None:
@@ -65,7 +65,7 @@ async def test_openapi_documents_error_statuses(client: AsyncClient) -> None:
     assert resp.status_code == 200
     paths: dict[str, Any] = resp.json()["paths"]
 
-    detail = paths["/api/users/{user_id}"]["get"]["responses"]
+    detail = paths["/users/{user_id}"]["get"]["responses"]
     # 429 arrives from the api_router's global limiter.
     assert sorted(detail) == ["200", "401", "403", "404", "422", "429"]
 
@@ -158,7 +158,7 @@ def test_errors_without_a_default_constructor_still_document() -> None:
 
 async def test_openapi_documents_the_rate_limit_header(client: AsyncClient) -> None:
     resp = await client.get("/openapi.json")
-    limited = resp.json()["paths"]["/api/auth/token"]["post"]["responses"]["429"]
+    limited = resp.json()["paths"]["/auth/token"]["post"]["responses"]["429"]
 
     assert "Retry-After" in limited["headers"]
     example = limited["content"]["application/json"]["examples"]["rate_limited"]

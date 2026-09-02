@@ -15,10 +15,10 @@ not need to go rediscover them.
 
 ## What the template guarantees
 
-- **Placeholders resolve at generation time.** `project_slug` is kebab-case,
-  `package_name` snake-case, and a literal value written where a placeholder
-  belongs is a defect that silently hard-codes one project's name into every
-  generated one.
+- **Placeholders resolve at generation time.** `project_slug` is kebab-case and
+  is the only name-bearing one — the Python package is always the literal
+  directory `app/`. A literal value written where a placeholder belongs is a
+  defect that silently hard-codes one project's name into every generated one.
 - **`_copy_without_render`** (`*.html`, `.gitignore`, `.pre-commit-config.yaml`,
   `**/locales/**`, `templates/**`) is copied verbatim. A `cookiecutter.*`
   reference added inside one of those files ships literally and never resolves.
@@ -32,15 +32,15 @@ not need to go rediscover them.
 ## What the generated app guarantees
 
 - Every API response is the envelope (`success` / `data` / `message` / `errors`
-  / `meta`), built by `core.response` helpers, with the exception handlers
+  / `meta`), built by `http.response` helpers, with the exception handlers
   producing the same shape.
 - Health probes `/live`, `/ready`, `/health` are the deliberate exception: bare
-  k8s bodies registered before the API prefix, returning `JSONResponse(503)`
+  k8s bodies registered before the module routers, returning `JSONResponse(503)`
   rather than raising so the handlers cannot re-wrap them. Tests assert the
   envelope keys are absent — a change that "fixes" them into envelopes is a
   defect.
 - Errors are documented from the exception classes via
-  `core.openapi.error_responses`; a hand-written duplicate is a defect, and so
+  `http.openapi.error_responses`; a hand-written duplicate is a defect, and so
   is a second declaration of the success shape. An `AppError` docstring must be
   the first statement in the class body or the default message silently becomes
   the generic one.

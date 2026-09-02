@@ -14,18 +14,18 @@ rediscover them.
 ## What the service guarantees
 
 - Every API response is the envelope (`success` / `data` / `message` / `errors`
-  / `meta`), built by `core.response` helpers and typed as `Envelope[T]` or
+  / `meta`), built by `http.response` helpers and typed as `Envelope[T]` or
   `EnvelopeList[T]`. `meta` carries only facts about the request; pagination is
   a top-level member of `EnvelopeList[T]`.
 - Health probes `/live`, `/ready`, `/health` are the deliberate exception: bare
-  k8s bodies outside `API_PREFIX`, returning `JSONResponse(503)` rather than
+  k8s bodies outside `api_router`, returning `JSONResponse(503)` rather than
   raising. Tests assert the envelope keys are absent — a change that "fixes"
   them into envelopes is a defect.
 - Errors are documented from the exception classes via
-  `core.openapi.error_responses`. A hand-written duplicate is a defect. An
+  `http.openapi.error_responses`. A hand-written duplicate is a defect. An
   `AppError` docstring must be the first statement in the class body, or the
   default message silently becomes the generic one.
-- Layers point one way: `routes → service → crud → models`. Routes hold no
+- Layers point one way: `routes → usecases → repositories → models`. Routes hold no
   business logic and no session access; repositories `flush()` and never commit.
 - Only `fixed-window`, `moving-window`, `sliding-window` are valid rate-limit
   strategies. `TRUSTED_PROXY_HOPS` must equal the real proxy count — zero when

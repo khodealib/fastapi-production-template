@@ -38,14 +38,23 @@ uv run --from cookiecutter cookiecutter .
 │   ├── CLAUDE.md
 │   ├── agents/
 │   └── skills/
-├── {package_name}/
+├── app/                        # always `app`, whatever the project is called
 │   ├── api.py                  # central router
-│   ├── main.py                 # app factory
-│   ├── middleware.py
-│   ├── core/                   # config, db, security, health, exceptions
-│   ├── infrastructure/         # cache, email, i18n, ratelimit, tasks
+│   ├── main.py                 # ASGI entrypoint
+│   ├── application.py          # app factory
+│   ├── config/                 # settings, constants
+│   ├── database/               # base, engine, session
+│   ├── security/               # jwt, passwords, constants
+│   ├── exceptions/             # errors, handlers
+│   ├── http/                   # schemas, response, pagination, openapi, net
+│   ├── middleware/             # request context, rate-limit headers
+│   ├── observability/          # logging, metrics, tracing
+│   ├── health/                 # /live, /ready, /health
+│   ├── utils/                  # datetime (utcnow) and other shared helpers
+│   ├── infrastructure/         # admin_auth, cache, email, i18n, ratelimit, tasks
 │   ├── modules/
-│   │   └── users/              # routes, service, crud, models, schemas, deps, admin
+│   │   └── users/              # routes/, usecases/, repositories/, models/,
+│   │                           #   schemas/, deps.py, metrics.py, admin.py
 │   ├── alembic/
 │   ├── locales/
 │   └── static/
@@ -65,6 +74,7 @@ uv run --from cookiecutter cookiecutter .
 | Cache | Redis helpers (no-op without `REDIS_URL`) |
 | i18n | gettext + Babel |
 | Logging | structlog (JSON prod, console dev) |
+| Metrics / tracing | Prometheus at `/metrics` (`ENABLE_METRICS`) + OpenTelemetry (`ENABLE_TRACING`, opt-in) |
 | Task queue | Celery + Redis |
 
 ## Template Development
@@ -75,14 +85,15 @@ After editing files under `{{ cookiecutter.project_slug }}/`, verify:
 # Generate fixture project
 rm -rf /tmp/final
 uvx cookiecutter --no-input --output-dir /tmp/final . \
-  project_name="Fixture" project_slug="fixture" package_name="fixture" \
+  project_name="Fixture" project_slug="fixture" \
   description="Test" author_name="T" author_email="t@t.com" version="0.1.0"
 
 # Run verification
 cd /tmp/final/fixture
-uv run ruff check fixture tests
-uv run ruff format --check fixture tests
-uv run mypy --strict fixture
+uv sync
+uv run ruff check app tests
+uv run ruff format --check app tests
+uv run mypy --strict app tests
 uv run pytest -v
 ```
 

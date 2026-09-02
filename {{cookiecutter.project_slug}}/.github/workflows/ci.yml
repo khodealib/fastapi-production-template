@@ -28,9 +28,9 @@ jobs:
           enable-cache: true
       - run: uv sync
       - name: Ruff check
-        run: uv run ruff check {{ cookiecutter.package_name }} tests
+        run: uv run ruff check app tests
       - name: Ruff format
-        run: uv run ruff format --check {{ cookiecutter.package_name }} tests
+        run: uv run ruff format --check app tests
 
   typecheck:
     name: Type Check
@@ -42,7 +42,7 @@ jobs:
           enable-cache: true
       - run: uv sync
       - name: mypy
-        run: uv run mypy --strict {{ cookiecutter.package_name }} tests
+        run: uv run mypy --strict app tests
 
   security:
     name: Security Scan
@@ -56,7 +56,7 @@ jobs:
       # Through `uv run`, never `uvx`: bandit parses with the interpreter it
       # runs on, and silently skips files it cannot parse while still exiting 0.
       - name: bandit
-        run: uv run bandit -c pyproject.toml -q -r {{ cookiecutter.package_name }}
+        run: uv run bandit -c pyproject.toml -q -r app
 
   # ---------------------------------------------------------------------------
   # Test

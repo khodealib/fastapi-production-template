@@ -8,15 +8,16 @@ import pytest
 from fastapi import APIRouter, Depends, FastAPI
 from httpx import ASGITransport, AsyncClient
 
-from {{ cookiecutter.package_name }}.core.exception_handlers import (
+from app.api import api_router
+from app.exceptions.handlers import (
     register_exception_handlers,
 )
-from {{ cookiecutter.package_name }}.core.net import UNKNOWN_CLIENT, resolve_client_ip
-from {{ cookiecutter.package_name }}.infrastructure.ratelimit import (
+from app.http.net import UNKNOWN_CLIENT, resolve_client_ip
+from app.infrastructure.ratelimit import (
     RateLimitStrategy,
     rate_limit,
 )
-from {{ cookiecutter.package_name }}.middleware import RateLimitHeadersMiddleware
+from app.middleware import RateLimitHeadersMiddleware
 
 
 def _build_app(*dependencies: Callable[..., Any]) -> FastAPI:
@@ -97,24 +98,37 @@ async def test_narrower_route_limit_owns_the_headers() -> None:
     assert resp.headers["X-RateLimit-Limit"] == "10"
 
 
+PROBE_PATHS = ("/live", "/ready", "/health")
+
+
+def _api_router_paths() -> set[str]:
+    """The paths api_router actually mounts, via a throwaway app of its own."""
+    probe = FastAPI()
+    probe.include_router(api_router)
+    paths: set[str] = set(probe.openapi()["paths"])
+    return paths
+
+
 async def test_every_api_route_documents_the_rate_limit(client: AsyncClient) -> None:
-    """The global limiter applies under API_PREFIX, so 429 belongs everywhere."""
+    """The global limiter applies to api_router, so 429 belongs everywhere."""
     resp = await client.get("/openapi.json")
     paths = resp.json()["paths"]
 
-    api_routes = [p for p in paths if p.startswith("/api")]
-    assert api_routes
-    for path in api_routes:
+    # An allowlist, not "everything that isn't a probe": a future router mounted
+    # outside api_router carries no global budget and must not be asserted on.
+    documented = [p for p in paths if p in _api_router_paths()]
+    assert documented
+    for path in documented:
         for method, op in paths[path].items():
             assert "429" in op["responses"], f"{method.upper()} {path} omits 429"
 
 
 async def test_probes_are_not_rate_limited(client: AsyncClient) -> None:
-    """Health probes sit outside API_PREFIX and must stay unthrottled."""
+    """Health probes sit outside the api_router and must stay unthrottled."""
     resp = await client.get("/openapi.json")
     paths = resp.json()["paths"]
 
-    for probe in ("/live", "/ready", "/health"):
+    for probe in PROBE_PATHS:
         assert "429" not in paths[probe]["get"]["responses"]
 
 

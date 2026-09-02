@@ -29,7 +29,7 @@ Write and update this project's documentation.
    an error code, a header, a query parameter — that page changes in the same
    commit. It is the one doc where being out of date is a bug, not untidiness.
 
-4. **`configuration.md` follows `core/config.py` exactly.** Read the `Settings`
+4. **`configuration.md` follows `config/settings.py` exactly.** Read the `Settings`
    class rather than the previous version of the table; a renamed variable that
    only lives in the docs is worse than no docs.
 

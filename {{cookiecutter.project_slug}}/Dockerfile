@@ -11,7 +11,7 @@ RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-install-project --no-dev
 
 # Copy application code and install
-COPY {{ cookiecutter.package_name }} ./{{ cookiecutter.package_name }}
+COPY app ./app
 COPY alembic.ini ./
 RUN --mount=type=cache,target=/root/.cache/uv \
     uv sync --no-dev
@@ -35,7 +35,7 @@ WORKDIR /app
 
 # Copy everything with correct ownership in one layer
 COPY --from=builder --chown=app:app /app/.venv .venv
-COPY --from=builder --chown=app:app /app/{{ cookiecutter.package_name }} ./{{ cookiecutter.package_name }}
+COPY --from=builder --chown=app:app /app/app ./app
 COPY --from=builder --chown=app:app /app/alembic.ini ./alembic.ini
 COPY --chown=app:app entrypoint.sh ./
 
@@ -52,4 +52,4 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=10s \
     CMD curl -f http://localhost:8000/live || exit 1
 
 ENTRYPOINT ["./entrypoint.sh"]
-CMD ["uvicorn", "{{ cookiecutter.package_name }}.main:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]

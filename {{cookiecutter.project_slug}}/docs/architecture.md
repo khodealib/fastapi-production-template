@@ -2,54 +2,83 @@
 
 ## Layout
 
+The Python package is always `app/` — it does not take the project's name.
+
 ```text
-{{ cookiecutter.package_name }}/
+app/
 ├── api.py                 # central router; carries the global rate limit
-├── main.py                # app factory — middleware, admin, error handling
-├── middleware.py          # request context, rate-limit headers
-├── core/                  # cross-cutting
-│   ├── config.py          # pydantic-settings
-│   ├── database.py        # async engine, session dependency
-│   ├── security.py        # JWT, argon2 hashing
+├── main.py                # ASGI entrypoint: `app = create_app()`
+├── application.py         # app factory — middleware, admin, error handling
+├── config/
+│   ├── settings.py        # pydantic-settings
+│   └── constants.py       # Environment enum
+├── database/
+│   ├── base.py            # DeclarativeBase + naming convention
+│   ├── engine.py          # async engine, dispose_engine
+│   └── session.py         # SessionFactory, get_session, Session
+├── security/
+│   ├── jwt.py             # token issuing and decoding
+│   ├── passwords.py       # argon2 hashing
+│   └── constants.py       # token type / scheme discriminators
+├── exceptions/
+│   ├── errors.py          # AppError hierarchy
+│   └── handlers.py        # envelope-rendering handlers
+├── http/                  # the response contract
 │   ├── schemas.py         # Envelope, EnvelopeList, Pagination
 │   ├── response.py        # envelope builders
+│   ├── pagination.py      # Page, page_params
 │   ├── openapi.py         # error documentation derived from exceptions
-│   ├── exceptions.py      # AppError hierarchy
-│   ├── exception_handlers.py
-│   ├── pagination.py
-│   ├── net.py             # client identity behind proxies
-│   └── health/            # /live, /ready, /health
-├── infrastructure/        # cache, email, i18n, ratelimit, tasks
+│   └── net.py             # client identity behind proxies
+├── middleware/
+│   ├── request_context.py # request id + structured request log
+│   └── rate_limit_headers.py
+├── observability/
+│   ├── logging.py         # structlog configuration
+│   ├── metrics.py         # Prometheus, exposed at /metrics
+│   └── tracing.py         # OpenTelemetry
+├── health/                # /live, /ready, /health
+├── utils/                 # datetime.py (utcnow) and other small shared helpers
+├── infrastructure/        # admin_auth, cache, email, i18n, ratelimit, tasks
 └── modules/
     └── users/
-        ├── routes.py      # HTTP layer (thin)
-        ├── service.py     # use cases
-        ├── crud.py        # repositories
-        ├── models.py      # SQLAlchemy ORM
-        ├── schemas.py     # Pydantic boundaries
+        ├── routes/        # HTTP layer (thin), one router per file
+        ├── usecases/      # use cases, one class per file
+        ├── repositories/  # repositories, one per entity
+        ├── models/        # SQLAlchemy ORM, one entity per file
+        ├── schemas/       # Pydantic boundaries
         ├── deps.py        # dependencies, incl. repository providers
+        ├── metrics.py     # Prometheus counters for this module's events
         └── admin.py       # SQLAdmin views
 ```
 
+Names are spelled out in full: `database/` not `db/`, `repositories/` not
+`crud/`, `usecases/` not `services/`. The only abbreviations are the
+well-established ones — `http`, `jwt`, `api`.
+
+The `modules/<name>/` directory is also the import boundary: imports inside a
+module are relative (`from ..repositories import ItemRepository`), imports that
+leave it are absolute (`from app.security.jwt import decode_token`). A `from
+...` is never correct — it means the import escaped the module.
+
 ## Layer rules
 
-Dependencies run one way: `routes → service → crud → models`.
+Dependencies run one way: `routes → usecases → repositories → models`.
 
 | Layer | Responsibility | Must not |
 |---|---|---|
-| `routes.py` | Parse, call a use case, return an envelope | Touch the session or hold business logic |
-| `service.py` | Use cases — classes with one `execute()` | Import FastAPI |
-| `crud.py` | Data access over `AsyncSession` | Hold business rules, or commit |
-| `models.py` | ORM entities | — |
-| `schemas.py` | The API boundary | Leak ORM objects |
+| `routes/` | Parse, call a use case, return an envelope | Touch the session or hold business logic |
+| `usecases/` | Use cases — classes with one `execute()` | Import FastAPI |
+| `repositories/` | Data access over `AsyncSession` | Hold business rules, or commit |
+| `models/` | ORM entities | — |
+| `schemas/` | The API boundary | Leak ORM objects |
 
 `get_session` commits on success and rolls back on exception, so repositories
 `flush()` and never `commit()`.
 
-A module starts as one `service.py` and one `routes.py`. Split into `usecases/`
-and `routers/` packages only once they outgrow that — roughly 300 lines or eight
-use cases. Never keep both `routes.py` and a `routers/` package: the package
-shadows the module and the file silently becomes dead code.
+Every layer is a package from the first file: one use case per file in
+`usecases/`, one router per file in `routes/`, one entity per file in `models/`,
+each re-exported from the package's `__init__.py`. A module does not grow into
+this layout — it starts there.
 
 ## Key patterns
 
@@ -66,10 +95,14 @@ shadows the module and the file silently becomes dead code.
   client; a route adds its own stricter `rate_limit(...)` when it needs one, and
   the narrower limit owns the `X-RateLimit-*` headers.
 - **Request ID** — `request.state.request_id`, echoed as `X-Request-ID`.
+- **Business metrics** — each module owns a `metrics.py` of named Prometheus
+  metrics; its use cases increment them after a state change or on each error
+  path. They surface on `/metrics` alongside the HTTP series that
+  `observability/metrics.py` collects.
 
 ## The response envelope
 
-Every `/api` response shares one shape. The client-facing specification lives in
+Every API response shares one shape. The client-facing specification lives in
 [API Contract](api-contract.md); this is the server-side view.
 
 ```json
@@ -89,6 +122,6 @@ Every `/api` response shares one shape. The client-facing specification lives in
 - HTTP status codes stay accurate; `success` mirrors them for convenience.
 
 **The health probes are the one exception.** `/live`, `/ready` and `/health` are
-registered outside the API prefix and return bare bodies, and they emit `503` as
+registered before the module routers and return bare bodies, and they emit `503` as
 a plain `JSONResponse` rather than raising — precisely so the envelope exception
 handlers cannot re-wrap them. Tests assert the absence of envelope keys.

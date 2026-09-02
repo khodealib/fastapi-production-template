@@ -14,27 +14,37 @@ you should not need to read anything else to rediscover it.
 
 ## Layout
 
-Modules under `modules/<name>/`: `routes.py` (HTTP only), `service.py` (use
-cases — classes with `execute()`), `crud.py` (repository adapters over
-`AsyncSession`), `models.py` (SQLAlchemy 2.0), `schemas.py` (Pydantic),
-`deps.py` (dependencies, including repository providers), `admin.py`.
-Dependencies point one way: `routes → service → crud → models`. Routes never
-touch a session directly; services never import FastAPI.
+The Python package is always `app/`. Modules under `app/modules/<name>/` are
+packages of packages: `routes/` (HTTP only), `usecases/` (classes with
+`execute()`, one per file), `repositories/` (adapters over `AsyncSession`),
+`models/` (SQLAlchemy 2.0), `schemas/` (Pydantic), plus `deps.py` and
+`admin.py`. Each package re-exports its public names from `__init__.py`.
+Dependencies point one way: `routes → usecases → repositories → models`. Routes
+never touch a session directly; use cases never import FastAPI.
 
-`core/` is cross-cutting (config, database, security, response, exceptions,
-openapi, pagination, health); `infrastructure/` is external integrations (cache,
-email, i18n, ratelimit, tasks); `api.py` mounts module routers; `main.py` is the
-app factory.
+Cross-cutting concerns are named packages at the package root: `config/`
+(`settings.py`, `constants.py`), `database/` (`base.py`, `engine.py`,
+`session.py`), `security/` (`jwt.py`, `passwords.py`, `constants.py`),
+`exceptions/` (`errors.py`, `handlers.py`), `http/` (`schemas.py`,
+`response.py`, `pagination.py`, `openapi.py`, `net.py`), `middleware/`,
+`observability/` (`logging.py`, `metrics.py`, `tracing.py`), `health/`;
+`infrastructure/` is external integrations (admin_auth, cache, email, i18n,
+ratelimit, tasks); `api.py` mounts module routers; `application.py` is the app
+factory and `main.py` the ASGI entrypoint.
+
+Use full, explicit names — `database/` not `db/`, `repositories/` not `crud/`.
+Routers mount at the root: there is no `/api` prefix and no `API_PREFIX`
+setting.
 
 ## Rules you cannot break
 
-- **Every API response goes through the envelope** via the `core.response`
+- **Every API response goes through the envelope** via the `http.response`
   helpers, typed with `Envelope[T]` / `EnvelopeList[T]` as `response_model`.
 - **Health probes deliberately do not.** `/live`, `/ready`, `/health` sit
-  outside `API_PREFIX`, return bare k8s bodies, and return a plain
+  outside `api_router`, return bare k8s bodies, and return a plain
   `JSONResponse(503)` instead of raising so the envelope handlers cannot re-wrap
   them. Tests assert the envelope keys are absent. Leave them alone.
-- **Document the errors a route raises** with `core.openapi.error_responses`,
+- **Document the errors a route raises** with `http.openapi.error_responses`,
   passing the exception classes; `validation=True` where a body, path or query
   parameter can fail. Never document the success shape twice.
 - An `AppError` subclass's **docstring is its OpenAPI description and its
@@ -42,10 +52,10 @@ app factory.
 - Repositories arrive as dependencies; never construct one in a handler.
   `get_session` commits and rolls back; repositories `flush()`.
 - Rate limiting is layered: `api_router` carries the global budget, so every
-  `/api` route already documents 429. Add a dependency only for a tighter limit,
+  API route already documents 429. Add a dependency only for a tighter limit,
   and do not re-declare `RateLimitedError`. Valid strategies are exactly
   `fixed-window`, `moving-window`, `sliding-window`.
-- Callers are identified by `core.net.client_ip`. It trusts `X-Forwarded-For`
+- Callers are identified by `http.net.client_ip`. It trusts `X-Forwarded-For`
   only when `TRUSTED_PROXY_HOPS` is greater than zero, counting from the right.
   That number must equal the real proxy count.
 - A new setting also touches `.env.example` and `docs/configuration.md`. A new

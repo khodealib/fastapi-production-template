@@ -1,4 +1,4 @@
-.PHONY: help install init dev up makemigrations migrate worker format lint test security verify messages docker-up docker-down docker-logs docker-restart
+.PHONY: help install init dev up makemigrations migrate worker format lint test test-fast security verify messages docker-up docker-down docker-logs docker-restart coverage clean schema dev-tools watch docs new-module seed
 
 help: # Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?# ' Makefile | awk 'BEGIN {FS = ":.*?# "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -11,7 +11,7 @@ init: # Copy .env.example to .env (first-time setup)
 	@test -f .env && echo ".env already exists, skipping"
 
 dev: init ## Run dev server with hot-reload (needs db + redis running)
-	uv run uvicorn {{ cookiecutter.package_name }}.main:app --reload
+	uv run uvicorn app.main:app --reload
 
 up: # Start postgres + redis
 	docker compose up -d db redis
@@ -23,26 +23,57 @@ makemigrations: # Autogenerate a migration: make makemigrations m="msg"
 	uv run alembic revision --autogenerate -m "$(m)"
 
 worker: # Start a Celery worker
-	uv run celery -A {{ cookiecutter.package_name }}.infrastructure.tasks.celery_app worker --loglevel=info
+	uv run celery -A app.infrastructure.tasks.celery_app worker --loglevel=info
 
 format: # Auto-format + fix
-	uv run ruff check --fix {{ cookiecutter.package_name }} tests && uv run ruff format {{ cookiecutter.package_name }} tests
+	uv run ruff check --fix app tests && uv run ruff format app tests
 
 lint: # Ruff + mypy
-	uv run ruff check {{ cookiecutter.package_name }} tests
-	uv run ruff format --check {{ cookiecutter.package_name }} tests
-	uv run mypy --strict {{ cookiecutter.package_name }} tests
+	uv run ruff check app tests
+	uv run ruff format --check app tests
+	uv run mypy --strict app tests
 
 test: # Run the test suite
 	uv run pytest
 
+test-fast: # Run tests in parallel (pytest-xdist, faster on multi-core)
+	uv run pytest -n auto --tb=short
+
 security: # Static security scan (bandit)
-	uv run bandit -c pyproject.toml -q -r {{ cookiecutter.package_name }}
+	uv run bandit -c pyproject.toml -q -r app
+
+coverage: # Run tests with HTML coverage report (opens htmlcov/index.html)
+	uv run pytest --cov=app --cov-report=html --cov-report=term-missing
+
+clean: # Remove caches and build artefacts
+	find . -type d -name __pycache__ -exec rm -rf {} +
+	find . -type d -name .pytest_cache -exec rm -rf {} +
+	find . -type d -name .mypy_cache -exec rm -rf {} +
+	find . -type d -name .ruff_cache -exec rm -rf {} +
+	rm -rf htmlcov .coverage dist
+
+schema: # Export openapi.json without starting the server
+	uv run python scripts/export_schema.py
+
+dev-tools: # Start pgAdmin (localhost:5050) + Mailpit (localhost:8025)
+	docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d pgadmin mailpit
+
+watch: # Re-run tests on file change (TDD loop)
+	uv run ptw -- --tb=short
+
+docs: # Serve documentation locally (http://localhost:8000)
+	uv run mkdocs serve
+
+new-module: # Scaffold a new module: make new-module name=payments
+	uv run python -m app.cli new-module $(name)
+
+seed: # Load fixture data into the database (make sure DB is running first)
+	uv run python -m app.cli seed
 
 verify: lint security test # Everything a CI job would run
 
 messages: # Compile gettext catalogs (needs babel)
-	uv run pybabel compile -d {{ cookiecutter.package_name }}/locales
+	uv run pybabel compile -d app/locales
 
 docker-up: init ## Start full stack in Docker (builds image + runs api + db + redis)
 	docker compose up -d --build

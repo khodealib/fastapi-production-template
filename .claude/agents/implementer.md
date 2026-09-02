@@ -18,9 +18,10 @@ A **cookiecutter template**, not a runnable application. Nothing imports or
 executes as-is. Every source file lives under `{{cookiecutter.project_slug}}/`
 and is full of Jinja placeholders that resolve only at generation time.
 
-- `project_slug` is kebab-case (directory, DB name, `pyproject` name);
-  `package_name` is snake_case (imports, module paths).
-- Directory names are templated too — `{{cookiecutter.package_name}}/` is a real
+- `project_slug` is kebab-case (directory, DB name, `pyproject` name). There is
+  no `package_name`: the Python package is always the literal directory `app/`,
+  so every generated import reads `from app...`.
+- Directory names are templated too — `{{cookiecutter.project_slug}}/` is a real
   directory on disk. **Quote every path in a shell command.**
 - `pyproject.toml` uses Jinja control flow (`{% if %}`) for the FastAPI pin: a
   template, not valid TOML. Same for any file containing `{% %}`.
@@ -45,14 +46,14 @@ A layout or convention change touches the shipped one and
 ## Contracts of the generated app
 
 - **Every API response goes through the envelope** (`success` / `data` /
-  `message` / `errors` / `meta`) via `core.response` helpers. The exception
+  `message` / `errors` / `meta`) via `http.response` helpers. The exception
   handlers wrap `AppError`, `RequestValidationError`, `StarletteHTTPException`
   and bare `Exception` into the same shape.
 - **Health probes are the deliberate exception.** `/live`, `/ready`, `/health`
-  are registered before the API prefix, return bare k8s bodies, and return a
+  are registered before the module routers, return bare k8s bodies, and return a
   plain `JSONResponse(503)` rather than raising precisely so the envelope
   handlers cannot re-wrap them. Tests assert the envelope keys are absent.
-- A route's `responses=` map comes from `core.openapi.error_responses`, built
+- A route's `responses=` map comes from `http.openapi.error_responses`, built
   from the `AppError` subclasses it raises. An error class's **docstring is its
   OpenAPI description and its default message** and must be the first statement
   in the class body — after the attributes it is an expression, `__doc__` is
@@ -66,8 +67,10 @@ A layout or convention change touches the shipped one and
 
 ## Things that move together
 
-- New setting → `core/config.py`, `.env.example`, `docs/configuration.md`
-- New module → `modules/<name>/`, `api.py`, the `alembic/env.py` import, a test
+- New setting → `config/settings.py`, `.env.example`, `docs/configuration.md`
+- New module → `modules/<name>/` (the `models/`, `schemas/`, `repositories/`,
+  `usecases/`, `routes/` packages plus `deps.py`), `api.py`, an `alembic/env.py`
+  import per entity, a test
 - New make target → `Makefile`, template `README.md`, the shipped `.claude/CLAUDE.md`
 - Changed layout or conventions → the shipped `.claude/CLAUDE.md`,
   `.claude/skills/*/SKILL.md`, `docs/architecture.md`, both READMEs
@@ -81,21 +84,21 @@ real checks against it:
 
 ```bash
 rm -rf /tmp/final && uvx cookiecutter --no-input --output-dir /tmp/final . \
-  project_name="Test Service" project_slug="fixture" package_name="fixture" \
+  project_name="Test Service" project_slug="fixture" \
   description="Test" author_name="T" author_email="t@t.com" version="0.1.0" \
   python_version="3.13" \
   && cd /tmp/final/fixture && uv sync \
-  && uv run ruff check fixture tests \
-  && uv run ruff format --check fixture tests \
-  && uv run mypy --strict fixture tests \
+  && uv run ruff check app tests \
+  && uv run ruff format --check app tests \
+  && uv run mypy --strict app tests \
   && uv run pytest -v
 ```
 
 All four must pass with zero errors. Tests run against in-memory SQLite with
 Redis and SMTP disabled — `tests/conftest.py` sets those env vars *before* any
-app import, so ordering there matters. For anything import-order sensitive, run
-it a second time with a package name that sorts on the other side of the
-third-party distributions (`fixture` sorts before `httpx`, `zqpkgzq` after).
+app import, so ordering there matters. The package is always `app`, so import
+order no longer varies with the project name — `known-first-party = ["app"]`
+pins it into its own trailing section.
 
 Match the surrounding code — its comment density, naming, and idiom. Report what
 you changed, what you actually ran, and anything you left undone.

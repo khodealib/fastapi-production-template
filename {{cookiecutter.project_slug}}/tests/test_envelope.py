@@ -4,11 +4,11 @@ from datetime import UTC, datetime
 
 from httpx import AsyncClient
 
-from {{ cookiecutter.package_name }}.core.exceptions import (
+from app.exceptions.errors import (
     NotFoundError,
     RateLimitedError,
 )
-from {{ cookiecutter.package_name }}.core.schemas import CustomModel
+from app.http.schemas import CustomModel
 
 
 def test_app_error_extra_reaches_the_error_detail() -> None:
@@ -60,9 +60,9 @@ async def test_rate_limited_response_sets_retry_after_header(
     """The login limiter allows 5/minute; the sixth call must back off."""
     payload = {"username": "nobody@example.com", "password": "whatever"}
     for _ in range(5):
-        await client.post("/api/auth/token", data=payload)
+        await client.post("/auth/token", data=payload)
 
-    resp = await client.post("/api/auth/token", data=payload)
+    resp = await client.post("/auth/token", data=payload)
 
     assert resp.status_code == 429
     assert int(resp.headers["Retry-After"]) > 0

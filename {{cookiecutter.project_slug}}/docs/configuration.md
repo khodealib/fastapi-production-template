@@ -2,7 +2,7 @@
 
 Every value is read from the environment, or from a `.env` file beside the
 project root. Names are case-sensitive and match the attributes on `Settings` in
-`{{ cookiecutter.package_name }}/core/config.py` exactly — that class is the
+`app/config/settings.py` exactly — that class is the
 source of truth, and this page follows it.
 
 `make init` copies `.env.example` to `.env` to get you started.
@@ -17,7 +17,6 @@ source of truth, and this page follows it.
 | `ENVIRONMENT` | `development` | `development`, `production` or `test`. Outside dev and test the interactive docs are disabled |
 | `DEBUG` | `false` | |
 | `SECRET_KEY` | dev placeholder | JWT signing key. **The app refuses to start in production while this is the placeholder** |
-| `API_PREFIX` | `/api` | Mount point for all module routers |
 | `ALLOWED_HOSTS` | `["*"]` | JSON list, enforced by `TrustedHostMiddleware` |
 | `CORS_ORIGINS` | `["http://localhost:8000"]` | JSON list |
 | `TRUSTED_PROXY_HOPS` | `0` | Reverse proxies in front of the app — see below |
@@ -26,7 +25,7 @@ source of truth, and this page follows it.
 
 | Variable | Default | Description |
 |---|---|---|
-| `DATABASE_URL` | `postgresql+asyncpg://app:app@localhost:5432/{{ cookiecutter.package_name }}` | Async driver required. `sqlite+aiosqlite:///./dev.db` works for local runs |
+| `DATABASE_URL` | `postgresql+asyncpg://app:app@localhost:5432/{{ cookiecutter.project_slug }}` | Async driver required. `sqlite+aiosqlite:///./dev.db` works for local runs |
 | `DB_ECHO` | `false` | Log every statement |
 
 ## Auth
@@ -50,7 +49,7 @@ source of truth, and this page follows it.
 |---|---|---|
 | `RATE_LIMIT_STORAGE_URI` | `memory://` | Use Redis in production — in-memory counters are per worker, so N workers give N times the intended limit |
 | `RATE_LIMIT_STRATEGY` | `fixed-window` | One of `fixed-window`, `moving-window`, `sliding-window` |
-| `RATE_LIMIT_GLOBAL` | `1000/minute` | Applied to every `/api` route as one budget per client |
+| `RATE_LIMIT_GLOBAL` | `1000/minute` | Applied to every API route as one budget per client |
 
 ## Email
 
@@ -70,6 +69,16 @@ source of truth, and this page follows it.
 | `DEFAULT_LOCALE` | `en` | Fallback when `Accept-Language` matches no compiled catalogue |
 | `LOG_JSON` | `false` | Structured JSON output — turn on in production |
 | `LOG_LEVEL` | `INFO` | |
+
+## Observability
+
+| Variable | Default | Description |
+|---|---|---|
+| `ENABLE_METRICS` | `true` | Exposes Prometheus metrics at `/metrics`. The endpoint is unauthenticated — restrict it at the ingress, or turn it off here |
+| `ENABLE_TRACING` | `false` | Installs the OpenTelemetry tracer provider and instruments the app. Off by default because the shipped provider exports spans to the console: turn it on once you have wired a real (OTLP) exporter in `app/observability/tracing.py` |
+
+The tracer provider is created in `create_app()` and shut down by the
+application lifespan, so the batch export thread is flushed and joined on exit.
 
 ## Running behind a proxy
 

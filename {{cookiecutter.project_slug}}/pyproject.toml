@@ -32,17 +32,26 @@ dependencies = [
     "typer>=0.12",
     "babel>=2.14",
     "itsdangerous>=2.2",
+    "prometheus-client>=0.20",
+    "prometheus-fastapi-instrumentator>=0.9",
+    "opentelemetry-sdk>=1.0",
+    "opentelemetry-instrumentation-fastapi>=0.40",
 ]
 
 [dependency-groups]
 dev = [
     "pytest>=8.2",
     "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
     "pytest-mock>=3.14",
+    "pytest-watch>=4.2",
     "httpx>=0.27",
     "mypy>=1.10",
     "ruff>=0.5",
     "bandit[toml]>=1.7",
+    "pytest-xdist>=3.5",
+    "mkdocs>=1.6",
+    "mkdocs-material>=9.5",
 ]
 
 [build-system]
@@ -50,7 +59,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build]
-packages = ["{{ cookiecutter.package_name }}"]
+packages = ["app"]
 
 [tool.uv]
 package = true
@@ -62,7 +71,7 @@ default-groups = ["dev"]
 [tool.ruff]
 target-version = "py{{ cookiecutter.python_version.replace('.', '') }}"
 line-length = 88
-src = ["{{ cookiecutter.package_name }}", "tests"]
+src = ["app", "tests"]
 
 [tool.ruff.lint]
 select = [
@@ -85,17 +94,18 @@ ignore = [
 ]
 
 [tool.ruff.lint.per-file-ignores]
-"{{ cookiecutter.package_name }}/alembic/versions/*.py" = ["I", "UP", "SIM", "E501", "W"]
-"{{ cookiecutter.package_name }}/alembic/env.py" = ["F401"]
-"{{ cookiecutter.package_name }}/core/config.py" = ["E501"]
-"{{ cookiecutter.package_name }}/core/health/checks.py" = ["ASYNC109", "BLE001"]
-"{{ cookiecutter.package_name }}/main.py" = ["ARG001"]
+"app/alembic/versions/*.py" = ["I", "UP", "SIM", "E501", "W"]
+# Models are imported for their side effect: registering tables on the metadata.
+"app/alembic/env.py" = ["F401"]
+"app/config/settings.py" = ["E501"]
+"app/health/checks.py" = ["ASYNC109", "BLE001"]
+"app/application.py" = ["ARG001"]
 "tests/*" = ["S101"]
 
 [tool.ruff.lint.isort]
 # Pin the app package as first-party so import order does not depend on how the
 # generated package name happens to sort against third-party distributions.
-known-first-party = ["{{ cookiecutter.package_name }}"]
+known-first-party = ["app"]
 
 [tool.ruff.lint.flake8-type-checking]
 runtime-evaluated-base-classes = [
@@ -127,7 +137,7 @@ exclude_dirs = ["tests", "docs", ".venv"]
 python_version = "{{ cookiecutter.python_version }}"
 strict = true
 plugins = ["pydantic.mypy", "sqlalchemy.ext.mypy.plugin"]
-files = ["{{ cookiecutter.package_name }}", "tests"]
+files = ["app", "tests"]
 warn_unused_ignores = true
 warn_unused_configs = true
 warn_redundant_casts = true
@@ -143,19 +153,20 @@ ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
 module = [
-    "{{ cookiecutter.package_name }}.middleware",
-    "{{ cookiecutter.package_name }}.modules.users.admin",
-    "{{ cookiecutter.package_name }}.core.pagination",
-    "{{ cookiecutter.package_name }}.alembic.env",
+    "app.middleware.rate_limit_headers",
+    "app.middleware.request_context",
+    "app.modules.users.admin",
+    "app.http.pagination",
+    "app.alembic.env",
 ]
 disable_error_code = ["no-untyped-def"]
 
 [[tool.mypy.overrides]]
-module = "{{ cookiecutter.package_name }}.core.response"
+module = "app.http.response"
 disable_error_code = ["no-any-return"]
 
 [[tool.mypy.overrides]]
-module = "{{ cookiecutter.package_name }}.infrastructure.tasks"
+module = "app.infrastructure.tasks"
 disable_error_code = ["untyped-decorator"]
 
 [[tool.mypy.overrides]]
