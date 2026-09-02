@@ -1,11 +1,11 @@
+---
+name: markdown-docs
+description: Update the plain-Markdown docs in docs/ so they stay true: which page owns what, why api-contract.md must change in the same commit as anything a client can observe, and why the endpoint reference is never hand-written. Use after changing a field, status code, error code, setting, or header.
+---
+
 # markdown-docs
 
 Write and update this project's documentation.
-
-## Usage
-
-When adding a feature, changing a response shape, adding a setting, or otherwise
-making something already documented untrue.
 
 ## Instructions
 

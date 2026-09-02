@@ -1,10 +1,11 @@
+---
+name: fastapi-route
+description: Scaffold or extend a module's FastAPI router: thin handlers, envelope responses, errors documented from the exception classes with error_responses, repositories injected via deps.py, per-route rate limits. Use when adding a route or creating routes.py for a new module.
+---
+
 # fastapi-route
 
 Generate a new FastAPI router for a module.
-
-## Usage
-
-When adding a new route to an existing module or creating routes for a new module.
 
 ## Instructions
 
@@ -122,25 +123,27 @@ When adding a new route to an existing module or creating routes for a new modul
 
 ## Conventions
 
-- Routes are thin: parse request → call use case → return envelope response
-- No business logic in routes
-- Repositories arrive as dependencies (`{Model}Repo`), never built in a handler
-- Errors propagate from use cases via the `AppError` hierarchy
+- Thin handler: parse the request, call one use case, return an envelope helper.
+  No business logic, no session access, no repository built inline — repositories
+  arrive as `{Model}Repo` from `deps.py`
+- Errors propagate from use cases as `AppError` subclasses; raise, never return
 - **Every route declares the errors it can raise** via
   `responses=error_responses(...)`, passing the exception classes themselves.
   Add `validation=True` wherever a body, path or query parameter can fail
-  validation. Never document the success response a second time —
-  `response_model` already defines it, and a duplicate is how docs drift
-- **All responses use envelope helpers** from `core.response`:
+  validation. Errors shared by a whole router go on the router. Never document
+  the success shape a second time — `response_model` is its only source of
+  truth, and a duplicate is how docs drift
+- Envelope helpers from `core.response`:
   - `success_response(data, message, request)` — 200/201
   - `paginated_response(items, total, params, message, request)` — 200 list
-  - `error_response(exc, request)` — auto-handled by exception handlers
+  - `error_response(exc, request)` — raised, rendered by the exception handlers
   - `validation_error_response(errors, message, request)` — 422
 
 ## When to split
 
-Keep all routes in `routes.py` until it passes roughly 300 lines. Past that,
-turn it into a `routers/` package with one file per route and re-export from
+Keep every route in `routes.py` until it passes roughly 300 lines or 8 routes,
+whichever comes first — the same threshold `service.py` uses. Past that, turn it
+into a `routers/` package with one file per route, re-exported from
 `__init__.py`. Never keep both `routes.py` and a `routers/` package in one
-module — the package shadows the module and the file silently becomes dead
-code.
+module: the package shadows the module and the file silently becomes dead code.
+Do not start a module in the split layout.

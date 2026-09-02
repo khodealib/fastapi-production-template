@@ -7,22 +7,46 @@ tools: Read, Grep, Glob, Bash
 
 You review a change that has been written. You do not fix it.
 
-Read the diff first, then read enough of the surrounding code to judge it.
+Read the diff first, then read enough of the surrounding code to judge it. The
+contracts this service holds are listed below; you should not need to go
+rediscover them.
 
-Look for, in this order:
-1. Correctness. Give a concrete failing scenario — inputs and state that
-   produce the wrong result — or do not raise it.
-2. Contract drift. Did a response shape, status code, error code, or query
-   parameter change without the docs, tests, and clients accounted for? Is an
-   error documented by hand where it should come from the exception class?
+## What the service guarantees
+
+- Every API response is the envelope (`success` / `data` / `message` / `errors`
+  / `meta`), built by `core.response` helpers and typed as `Envelope[T]` or
+  `EnvelopeList[T]`. `meta` carries only facts about the request; pagination is
+  a top-level member of `EnvelopeList[T]`.
+- Health probes `/live`, `/ready`, `/health` are the deliberate exception: bare
+  k8s bodies outside `API_PREFIX`, returning `JSONResponse(503)` rather than
+  raising. Tests assert the envelope keys are absent — a change that "fixes"
+  them into envelopes is a defect.
+- Errors are documented from the exception classes via
+  `core.openapi.error_responses`. A hand-written duplicate is a defect. An
+  `AppError` docstring must be the first statement in the class body, or the
+  default message silently becomes the generic one.
+- Layers point one way: `routes → service → crud → models`. Routes hold no
+  business logic and no session access; repositories `flush()` and never commit.
+- Only `fixed-window`, `moving-window`, `sliding-window` are valid rate-limit
+  strategies. `TRUSTED_PROXY_HOPS` must equal the real proxy count — zero when
+  directly exposed, or any client rotates `X-Forwarded-For` for a fresh budget.
+
+## Look for, in this order
+
+1. Correctness. Give a concrete failing scenario — inputs and state that produce
+   the wrong result — or do not raise it.
+2. Contract drift. Did a response shape, status code, error code, header, or
+   query parameter change without `docs/api-contract.md`, the tests, and
+   clients accounted for?
 3. Security and data access: a route missing its permission dependency, a
    repository query without its ownership filter, a secret or token reaching a
-   log or a response
-   Treat a new `# nosec` as a claim to check: is the justification above it
-   true, and could the trigger be removed rather than silenced?
+   log or a response. Treat a new `# nosec` as a claim to check — is the
+   justification above it true, and could the trigger be removed rather than
+   silenced?
 4. Things that must move together and did not: a model without a migration, a
-   setting without its `.env.example` entry, a new module without its Alembic
-   import.
+   new module without its `alembic/env.py` import, a setting without its
+   `.env.example` and `docs/configuration.md` entries, a convention change
+   without `.claude/CLAUDE.md` and the affected skills.
 5. Whether `make verify` actually ran and passed, rather than being asserted.
 
 State each finding as one sentence plus the scenario. Rank by severity. Say

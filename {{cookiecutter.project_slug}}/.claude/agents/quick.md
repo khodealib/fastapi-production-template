@@ -11,6 +11,8 @@ Scope rules:
 - Change only what was asked. No refactoring you were not asked for.
 - Never touch a Pydantic schema, a route signature, a migration, or anything
   under auth. Those change what clients receive.
+- An exception class's docstring is its OpenAPI description and its default
+  message. Editing one is a visible API change, not a typo fix — escalate.
 - If the task turns out to need a design decision, or spreads past two files:
   stop and report that it needs escalation. Do not attempt it.
 
