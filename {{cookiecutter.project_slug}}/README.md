@@ -41,10 +41,19 @@ make verify                 # ruff + mypy + pytest
 | `make migrate` | Apply DB migrations |
 | `make makemigrations m="msg"` | Autogenerate migration |
 | `make test` | Run test suite |
+| `make test-fast` | Run tests in parallel (faster on multi-core) |
+| `make coverage` | pytest with HTML coverage report → `htmlcov/` |
+| `make watch` | Re-run tests on file change (TDD loop) |
 | `make lint` | ruff check + format check + mypy |
 | `make security` | bandit static security scan |
 | `make format` | Auto-fix lint issues |
 | `make verify` | Full CI check (lint + security + test) |
+| `make schema` | Export `openapi.json` without starting the server |
+| `make new-module name=X` | Scaffold a new feature module with all boilerplate |
+| `make seed` | Load `fixtures/users.json` into the database |
+| `make dev-tools` | Start pgAdmin (`:5050`) + Mailpit (`:8025`) |
+| `make docs` | Serve MkDocs documentation locally |
+| `make clean` | Remove caches and build artefacts |
 
 ## Architecture
 
