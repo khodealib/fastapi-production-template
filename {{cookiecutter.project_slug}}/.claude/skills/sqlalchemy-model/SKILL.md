@@ -1,10 +1,11 @@
+---
+name: sqlalchemy-model
+description: Write a SQLAlchemy 2.0 ORM entity: Mapped[] annotations, UUID primary key, created_at/updated_at, relationships with cascades, module-level query helpers, and the alembic/env.py import. Use when adding or changing a database entity.
+---
+
 # sqlalchemy-model
 
 Generate a new SQLAlchemy ORM model.
-
-## Usage
-
-When adding new database entities to a module.
 
 ## Instructions
 
@@ -18,19 +19,19 @@ When adding new database entities to a module.
    from datetime import datetime
    from uuid import UUID, uuid4
    from zoneinfo import ZoneInfo
-   
+
    from sqlalchemy import Boolean, DateTime, ForeignKey, String, Uuid, func, select
    from sqlalchemy.orm import Mapped, mapped_column, relationship
-   
+
    UTC = ZoneInfo("UTC")
-   
+
    def _utcnow() -> datetime:
        return datetime.now(UTC)
-   
-   
+
+
    class {Model}(Base):
        __tablename__ = "{table_name}"
-       
+
        id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
        # ... fields ...
        created_at: Mapped[datetime] = mapped_column(
@@ -47,12 +48,12 @@ When adding new database entities to a module.
 3. For relationships:
    ```python
    from sqlalchemy.orm import Mapped, mapped_column, relationship
-   
+
    class Parent(Base):
        children: Mapped[list[Child]] = relationship(
            back_populates="parent", cascade="all, delete-orphan"
        )
-   
+
    class Child(Base):
        parent_id: Mapped[UUID] = mapped_column(
            Uuid, ForeignKey("parents.id", ondelete="CASCADE"), index=True

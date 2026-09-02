@@ -20,19 +20,19 @@ make lint         # ruff check + format check + mypy
 make format       # ruff check --fix + ruff format
 ```
 
-## Model Routing
+## Orchestration
 
-Classify the task first, then run the matching pipeline. The agents in
-`.claude/agents/` each pin their own model, so the tier is enforced once the
-work is delegated.
+You are the orchestrator. Classify the task, **write the plan yourself**, then
+delegate the code. The agents in `.claude/agents/` each pin their own model and
+carry their own brief, so none of them needs this file loaded.
 
 | Task | Pipeline |
 |---|---|
-| Simple — typo, docstring, local rename, "where is X" | `quick` (Haiku) |
-| Normal coding — a contained feature or fix in one module | implement directly (Sonnet) |
-| Complex coding | `planner` → `implementer` → `reviewer` |
-| Architecture, database, security, performance, breaking change | `planner` → `implementer` → `reviewer` |
-| Critical or high-risk | `planner` → `implementer` → `reviewer` → `implementer` (fixes) → `reviewer` (final verification) |
+| Simple — typo, docstring, local rename, "where is X" | `quick` |
+| Normal coding — a contained feature or fix in one module | `coder` |
+| Complex coding | plan here → `implementer` → `reviewer` |
+| Architecture, database, security, performance, breaking change | plan here → `implementer` → `reviewer` |
+| Critical or high-risk | plan here → `implementer` → `reviewer` → `implementer` (fixes) → `reviewer` (final verification) |
 
 - When a task sits between two rows, take the higher one.
 - **A change to a response shape, a status code, an error code, a query
@@ -40,12 +40,42 @@ work is delegated.
   a client is parsing it.
 - Critical means expensive to undo or hard to notice: auth, the rate limiter,
   migrations, the exception handlers, anything touching another user's data.
-- `planner` and `reviewer` are read-only by design. Route their output to
-  `implementer` rather than asking them to edit.
+- `reviewer` is read-only by design. Route its findings to `implementer` rather
+  than asking it to edit.
 - If the review returns findings, the fix round is part of the pipeline, not
   optional follow-up.
-- The session's own model is chosen by the user and cannot be switched
-  mid-task. This table routes work to agents that pin theirs.
+- Do not write the code yourself on a row that names an agent. `coder` exists so
+  that normal coding is delegated too.
+- The session's own model is chosen by the user and cannot be switched mid-task.
+  This table routes work to agents that pin theirs.
+
+### Planning
+
+For every row above the `coder` line, produce the plan before delegating. It
+must state:
+
+1. Which files change, and in what order. A module is `routes.py`, `service.py`,
+   `crud.py`, `models.py`, `schemas.py`, `deps.py`, `admin.py` — say which are
+   involved.
+2. Every place that must move together: a new setting also touches
+   `.env.example` and `docs/configuration.md`; a new model also needs a
+   migration and an `alembic/env.py` import; a new error also belongs in the
+   route's documented responses; anything a client observes also changes
+   `docs/api-contract.md`.
+3. Whether the change breaks an API contract, and if so what a client parsing
+   the old response will see.
+4. The tests that prove it, named individually — not "add tests".
+5. Anything you are unsure about, named plainly rather than guessed.
+
+Prefer the smallest plan that fully covers the request. Say what must be true
+when the work is done, not the code that would do it.
+
+## Skills
+
+`.claude/skills/` holds the templates for the file kinds this service is made
+of: `fastapi-route`, `sqlalchemy-model`, `pydantic-schema`, `pytest-async-test`,
+`markdown-docs`. They load on demand — reach for the matching one instead of
+copying an existing file, and update it when the convention it encodes changes.
 
 ## Architecture
 

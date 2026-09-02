@@ -90,22 +90,27 @@ All four must pass with zero errors.
 
 ## Claude AI Configuration
 
-The generated project includes `.claude/skills/` with templates for:
+The generated project includes `.claude/skills/`, loaded on demand, with
+templates for:
 
 - **fastapi-route** — module route generation
 - **sqlalchemy-model** — ORM model patterns
-- **pytest-async-test** — async test stubs
 - **pydantic-schema** — request/response schemas
+- **pytest-async-test** — async test stubs
+- **markdown-docs** — keeping `docs/` true
 
 …and `.claude/agents/` with a model-routing pipeline, each agent pinned to the
-model its role warrants:
+model its role warrants and briefed well enough not to load `CLAUDE.md`:
 
 | Agent | Model | Role |
 |---|---|---|
 | `quick` | Haiku | trivial single-file edits |
-| `planner` | Opus | designs the change, read-only |
-| `implementer` | Sonnet | writes the approved plan |
+| `coder` | Sonnet | contained features and fixes |
+| `implementer` | Sonnet | writes the approved plan, and the fix round |
 | `reviewer` | Opus | reviews the result, read-only |
+
+Planning stays with the main session, which classifies the task and writes the
+plan before delegating.
 
 Complex, architectural, security, performance and breaking changes run
 plan → implement → review; critical ones add a fix round and a final

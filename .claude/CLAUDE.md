@@ -14,7 +14,7 @@ and is full of Jinja placeholders that only resolve when a project is generated.
     ├── {{cookiecutter.package_name}}/
     ├── tests/  docs/  fixtures/  templates/
     ├── .claude/CLAUDE.md          # instructions shipped INTO generated projects
-    └── .claude/skills/            # fastapi-route, sqlalchemy-model, pydantic-schema,
+    └── .claude/skills/<name>/SKILL.md  # fastapi-route, sqlalchemy-model, pydantic-schema,
                                    #   pytest-async-test, markdown-docs
 ```
 
@@ -127,24 +127,24 @@ A change to the generated app usually touches more than one file:
 - New module → `modules/<name>/`, `api.py`, `alembic/env.py` import,
   a test file
 - New make target → `Makefile`, template `README.md`, `.claude/CLAUDE.md`
-- Changed layout/conventions → `.claude/CLAUDE.md`, `.claude/skills/*.md`,
+- Changed layout/conventions → `.claude/CLAUDE.md`, `.claude/skills/*/SKILL.md`,
   `docs/architecture.md`, both READMEs
 - Anything a client can observe — a field, status code, error code, header, or
   query parameter → `docs/api-contract.md`, in the same commit
 
-## Model Routing
+## Orchestration
 
-Classify the task first, then run the matching pipeline. The agents live in
-`.claude/agents/` and each pins its own model, so the tier is enforced once the
-work is delegated — what this policy decides is which pipeline to enter.
+You are the orchestrator. Classify the task, **write the plan yourself**, then
+delegate the code. The agents live in `.claude/agents/` and each pins its own
+model and carries its own brief, so none of them needs this file loaded.
 
 | Task | Pipeline |
 |---|---|
 | Simple — typo, docstring, local rename, "where is X" | `quick` (Haiku) |
-| Normal coding — a contained feature or fix in one area | implement directly (Sonnet) |
-| Complex coding | `planner` → `implementer` → `reviewer` |
-| Architecture, database, security, performance, breaking change | `planner` → `implementer` → `reviewer` |
-| Critical or high-risk | `planner` → `implementer` → `reviewer` → `implementer` (fixes) → `reviewer` (final verification) |
+| Normal coding — a contained feature or fix in one area | `coder` (Sonnet) |
+| Complex coding | plan here → `implementer` → `reviewer` |
+| Architecture, database, security, performance, breaking change | plan here → `implementer` → `reviewer` |
+| Critical or high-risk | plan here → `implementer` → `reviewer` → `implementer` (fixes) → `reviewer` (final verification) |
 
 Rules for the classification itself:
 
@@ -156,13 +156,33 @@ Rules for the classification itself:
 - A change is critical when getting it wrong is expensive to undo or hard to
   notice: auth, the rate limiter, migrations, the exception handlers, or
   anything a client parses.
-- `planner` and `reviewer` are read-only by design. Do not ask them to edit;
-  route their output to `implementer`.
+- `reviewer` is read-only by design. Do not ask it to edit; route its findings
+  to `implementer`.
 - The review is not a formality. If it returns findings, the fix round is part
   of the pipeline, not optional follow-up work.
+- Do not write the code yourself on a row that names an agent. `coder` exists so
+  that normal coding is delegated too.
 - The session's own model is chosen by the user and cannot be switched
   mid-task. This table routes work to agents that pin theirs; it does not
   reassign the top-level session.
+
+### Planning
+
+For every row above the `coder` line, produce the plan before delegating. It
+must state:
+
+1. Which files change, and in what order.
+2. Every place that must move together — see **Keep In Sync** above; a changed
+   response shape also touches the tests, both READMEs, `docs/api-contract.md`,
+   and the shipped `.claude/CLAUDE.md`.
+3. Whether the change breaks an existing contract, and if so what a client that
+   depends on the old behaviour will see.
+4. The exact verification: which generated fixture names to test with, and what
+   the four checks must show.
+5. Anything you are unsure about, named plainly rather than guessed.
+
+Do not describe the code line by line. Say what must be true when the work is
+done, and prefer the smallest plan that fully covers the request.
 
 ## Commit Convention
 

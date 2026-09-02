@@ -1,10 +1,11 @@
+---
+name: pydantic-schema
+description: Write Pydantic API-boundary schemas on CustomModel: Create/Read/Update/Detail shapes, field validation, and the Envelope[T] / EnvelopeList[T] aliases a route uses as its response_model. Use when adding or changing request or response schemas.
+---
+
 # pydantic-schema
 
 Generate Pydantic schemas for API boundaries.
-
-## Usage
-
-When adding request/response schemas for a module.
 
 ## Instructions
 
@@ -17,9 +18,9 @@ When adding request/response schemas for a module.
    ```python
    from datetime import datetime
    from uuid import UUID
-   
+
    from pydantic import EmailStr, Field, field_validator
-   
+
    from ...core.schemas import CustomModel
    ```
 
@@ -29,7 +30,7 @@ When adding request/response schemas for a module.
        email: EmailStr
        password: str = Field(min_length=8, max_length=128)
        full_name: str | None = Field(default=None, max_length=255)
-       
+
        @field_validator("password")
        @classmethod
        def _strong_password(cls, value: str) -> str:
@@ -72,8 +73,8 @@ When adding request/response schemas for a module.
        refresh_token: str
        token_type: str = "bearer"
        expires_in: int
-   
-   
+
+
    class RefreshRequest(CustomModel):
        refresh_token: str
    ```

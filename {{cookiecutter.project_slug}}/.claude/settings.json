@@ -1,0 +1,36 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(uv run manage.py *)",
+      "Bash(uv run pytest *)",
+      "Bash(git diff *)",
+      "Bash(git status)",
+      "Bash(git checkout *)",
+      "Bash(git pull)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git push *)",
+      "Bash(gh pr *)",
+      "Bash(uv run ruff *)"
+    ],
+    "deny": [
+      "Bash(sudo *)",
+      "Bash(rm -rf *)",
+      "Bash(curl *|*)",
+      "Bash(wget *|*)",
+      "Bash(env)", "Bash(printenv)", "Bash(set)",
+      "Bash(cat ~/.aws/*)", "Bash(cat ~/.ssh/*)",
+      "Bash(ssh *)", "Bash(scp *)",
+      "Bash(kubectl apply *)", "Bash(kubectl delete *)",
+      "Bash(terraform apply *)", "Bash(terraform destroy *)",
+      "Bash(cdk deploy *)", "Bash(cdk destroy *)",
+      "Bash(apt install *)",
+      "Read(secrets/**)", "Read(~/.aws/**)", "Read(~/.ssh/**)",
+      "Read(.env)", "Read(.env.*)",
+      "WebSearch", "WebFetch"
+    ]
+  },
+  "env": {
+    "CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS": "1"
+  }
+}
