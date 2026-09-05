@@ -12,7 +12,7 @@ Batteries included: admin, auth, migrations, tasks, observability — all typed,
 {{ cookiecutter.description }}
 
 A production-ready FastAPI project with Django-like batteries — async ORM, JWT auth,
-admin panel, rate limiting, email, i18n, Celery tasks, and strict dev tooling.
+admin panel, rate limiting, email, i18n, TaskIQ tasks, and strict dev tooling.
 
 ## Quickstart
 
@@ -40,6 +40,8 @@ make verify                 # ruff + mypy + pytest
 | `make dev` | Run dev server with reload |
 | `make migrate` | Apply DB migrations |
 | `make makemigrations m="msg"` | Autogenerate migration |
+| `make worker` | Start a TaskIQ worker |
+| `make scheduler` | Start the TaskIQ scheduler (runs each module's `crons/`) |
 | `make test` | Run test suite |
 | `make test-fast` | Run tests in parallel (faster on multi-core) |
 | `make coverage` | pytest with HTML coverage report → `htmlcov/` |
@@ -101,7 +103,8 @@ app/
 │   ├── email.py            # SMTP sender + Jinja2 templates
 │   ├── i18n.py             # gettext internationalization
 │   ├── ratelimit.py        # rate limiting (fixed/moving/sliding window)
-│   └── tasks.py            # Celery app + email task
+│   ├── broker.py           # TaskIQ broker (Redis, or in-memory fallback)
+│   └── scheduler.py        # TaskIQ scheduler for the modules' crons/
 ├── modules/
 │   └── users/
 │       ├── models/         # SQLAlchemy ORM entities, one per file
@@ -111,6 +114,8 @@ app/
 │       ├── routes/         # HTTP layer (thin), one router per file
 │       ├── deps.py         # CurrentUser / SuperUser dependencies
 │       ├── metrics.py      # Prometheus counters for this module's events
+│       ├── tasks/          # TaskIQ background tasks
+│       ├── crons/          # TaskIQ scheduled tasks (cron schedules)
 │       └── admin.py        # SQLAdmin views
 └── tests/
 ```

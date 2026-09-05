@@ -38,7 +38,8 @@ app/
 │   └── tracing.py         # OpenTelemetry
 ├── health/                # /live, /ready, /health
 ├── utils/                 # datetime.py (utcnow) and other small shared helpers
-├── infrastructure/        # admin_auth, cache, email, i18n, ratelimit, tasks
+├── infrastructure/        # admin_auth, broker, scheduler, cache, email,
+│                       #   i18n, ratelimit
 └── modules/
     └── users/
         ├── routes/        # HTTP layer (thin), one router per file
@@ -48,6 +49,8 @@ app/
         ├── schemas/       # Pydantic boundaries
         ├── deps.py        # dependencies, incl. repository providers
         ├── metrics.py     # Prometheus counters for this module's events
+        ├── tasks/         # TaskIQ background tasks
+        ├── crons/         # TaskIQ scheduled tasks (cron schedules)
         └── admin.py       # SQLAdmin views
 ```
 

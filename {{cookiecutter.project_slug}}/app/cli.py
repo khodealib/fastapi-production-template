@@ -111,6 +111,16 @@ def _scaffold(base: Path, name: str) -> None:
         "from __future__ import annotations\n",
     )
 
+    _write(
+        base / "crons" / "__init__.py",
+        f'"""Scheduled background tasks for the {name} module.\n'
+        "\n"
+        'Define them as ``@broker.task(schedule=[{"cron": "0 2 * * *"}])``\n'
+        "functions; ``app.infrastructure.scheduler`` discovers them from the\n"
+        'broker registry.\n"""\n'
+        "from __future__ import annotations\n",
+    )
+
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

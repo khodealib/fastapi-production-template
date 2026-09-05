@@ -92,6 +92,7 @@ the first file, re-exporting its public names from `__init__.py`:
 | `admin.py` | SQLAdmin `ModelView`s + `register_admin()` |
 | `metrics.py` | Prometheus `Counter`/`Histogram`/`Gauge` for business events in this module; use cases call them after state changes |
 | `tasks/` | TaskIQ task definitions for this module (`async def` + `@broker.task`); import `broker` from `app.infrastructure.broker` |
+| `crons/` | Scheduled tasks for this module — `@broker.task` carrying a `schedule` label (`schedule=[{"cron": "0 2 * * *"}]`), discovered by `app.infrastructure.scheduler` |
 
 **Always use full, explicit names** — `database/` not `db/`, `repositories/`
 not `crud/`, `usecases/` not `service/`. No abbreviations except the
@@ -113,7 +114,8 @@ Cross-cutting concerns are named packages at the package root — there is no
 | `utils/` | `datetime.py` (`utcnow()`, `UTC`) — cross-cutting helpers with no home of their own |
 
 `infrastructure/` — external integrations: `admin_auth`, `broker` (the TaskIQ
-broker instance), `cache`, `email`, `i18n`, `ratelimit`.
+broker instance), `scheduler` (the `TaskiqScheduler`, run as its own process via
+`make scheduler`), `cache`, `email`, `i18n`, `ratelimit`.
 `application.py` is the app factory (`create_app()`); `main.py` is the two-line
 ASGI entrypoint; `api.py` mounts module routers **at the root** — there is no
 `/api` prefix and no `API_PREFIX` setting.

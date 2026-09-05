@@ -20,6 +20,8 @@ mkdir -p app/modules/items/{models,schemas,repositories,usecases,routes}
 | `deps.py` | Dependencies, including repository providers |
 | `admin.py` | SQLAdmin views, if the module needs them |
 | `metrics.py` | Prometheus counters for this module's business events |
+| `tasks/` | TaskIQ background tasks (`@broker.task`) |
+| `crons/` | TaskIQ scheduled tasks — `@broker.task` with a `schedule` label |
 
 Every package gets an `__init__.py` that re-exports its public names, so callers
 write `from ..usecases import CreateItem` and never reach into a file directly.

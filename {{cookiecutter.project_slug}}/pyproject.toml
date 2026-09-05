@@ -171,7 +171,12 @@ module = "app.http.response"
 disable_error_code = ["no-any-return"]
 
 [[tool.mypy.overrides]]
-module = ["app.infrastructure.broker", "app.modules.*.tasks.*"]
+module = [
+    "app.infrastructure.broker",
+    "app.infrastructure.scheduler",
+    "app.modules.*.tasks.*",
+    "app.modules.*.crons.*",
+]
 disable_error_code = ["untyped-decorator"]
 
 [[tool.mypy.overrides]]

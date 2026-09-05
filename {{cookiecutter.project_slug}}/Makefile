@@ -1,4 +1,4 @@
-.PHONY: help install init dev up makemigrations migrate worker format lint test test-fast security verify messages docker-up docker-down docker-logs docker-restart coverage clean schema dev-tools watch docs new-module seed
+.PHONY: help install init dev up makemigrations migrate worker scheduler format lint test test-fast security verify messages docker-up docker-down docker-logs docker-restart coverage clean schema dev-tools watch docs new-module seed
 
 help: # Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?# ' Makefile | awk 'BEGIN {FS = ":.*?# "}; {printf "  %-14s %s\n", $$1, $$2}'
@@ -24,6 +24,9 @@ makemigrations: # Autogenerate a migration: make makemigrations m="msg"
 
 worker: # Start a TaskIQ worker
 	uv run taskiq worker app.infrastructure.broker:broker
+
+scheduler: # Start the TaskIQ scheduler (enqueues each module's crons/ tasks)
+	uv run taskiq scheduler app.infrastructure.scheduler:scheduler
 
 format: # Auto-format + fix
 	uv run ruff check --fix app tests && uv run ruff format app tests
