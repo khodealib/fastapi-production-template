@@ -100,7 +100,8 @@ ignore = [
 "app/alembic/env.py" = ["F401"]
 "app/config/settings.py" = ["E501"]
 "app/health/checks.py" = ["ASYNC109", "BLE001"]
-"app/application.py" = ["ARG001"]
+# Event handlers are imported for their side effect: subscribing to the bus.
+"app/application.py" = ["ARG001", "F401"]
 "tests/*" = ["S101"]
 
 [tool.ruff.lint.isort]

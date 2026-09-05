@@ -91,6 +91,7 @@ the first file, re-exporting its public names from `__init__.py`:
 | `deps.py` | FastAPI dependencies (`CurrentUser`, `SuperUser`) |
 | `admin.py` | SQLAdmin `ModelView`s + `register_admin()` |
 | `metrics.py` | Prometheus `Counter`/`Histogram`/`Gauge` for business events in this module; use cases call them after state changes |
+| `events/` | Signal name constants (`__init__.py`) + async handlers (`handlers.py`, `@subscribe(...)`); `application.py` imports `handlers` for its side effect |
 | `tasks/` | TaskIQ task definitions for this module (`async def` + `@broker.task`); import `broker` from `app.infrastructure.broker` |
 | `crons/` | Scheduled tasks for this module — `@broker.task` carrying a `schedule` label (`schedule=[{"cron": "0 2 * * *"}]`), discovered by `app.infrastructure.scheduler` |
 
@@ -110,6 +111,7 @@ Cross-cutting concerns are named packages at the package root — there is no
 | `http/` | `schemas.py`, `response.py`, `pagination.py`, `openapi.py`, `net.py` |
 | `middleware/` | `request_context.py`, `rate_limit_headers.py` |
 | `observability/` | `logging.py`, `metrics.py` (Prometheus), `tracing.py` (OTel) |
+| `events/` | `bus.py` — the in-process `EventBus` singleton (`bus`) and `subscribe` decorator |
 | `health/` | the `/live`, `/ready`, `/health` probes |
 | `utils/` | `datetime.py` (`utcnow()`, `UTC`) — cross-cutting helpers with no home of their own |
 

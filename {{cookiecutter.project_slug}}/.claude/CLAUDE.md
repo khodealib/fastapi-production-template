@@ -109,6 +109,10 @@ packages — one responsibility per file, each package re-exporting from its
 - `crons/` → scheduled task definitions for this module: `@broker.task` with a
   `schedule` label (`schedule=[{"cron": "0 2 * * *"}]`), discovered by
   `app.infrastructure.scheduler`
+- `events/` → signal name constants (`__init__.py`) and the module's async
+  handlers (`handlers.py`, decorated with `@subscribe(...)`). `application.py`
+  imports `handlers` for its side effect, so the subscriptions exist before the
+  first request
 
 This is the layout from the first file: a new module starts split, it does not
 grow into it.
@@ -130,6 +134,8 @@ catch-all `core/`:
   gated by `ENABLE_METRICS`), `tracing.py` (OpenTelemetry, gated by
   `ENABLE_TRACING`; `setup_tracing` returns the provider and the lifespan in
   `application.py` shuts it down)
+- `events/` → `bus.py`: the in-process `EventBus` singleton (`bus`) and the
+  `subscribe` decorator — Django signals without a broker
 - `health/` → the `/live`, `/ready`, `/health` probes
 - `utils/` → small cross-cutting helpers with no home of their own —
   `datetime.py` (`utcnow()`, `UTC`). Not a dumping ground: anything with a real
@@ -161,6 +167,11 @@ FastAPI.
   user_registrations_total`) and call it after the side effect succeeds or in
   every error path. Do not instrument HTTP-level events in use cases —
   `observability/metrics.py` handles those
+- Use cases announce state changes with `await bus.publish(SIGNAL, ...)` from
+  `app.events`, after the side effect succeeds. The bus is **in-process**:
+  handlers run inside the request, concurrently, and a raising handler is logged
+  rather than propagated. Anything that must outlive the response is a TaskIQ
+  task in `tasks/`, not an event handler
 - Session type: `Session` from `database.session` — already
   `Annotated[AsyncSession, Depends(get_session)]`
 - Use cases are classes with an `execute()` method
@@ -270,9 +281,12 @@ string flagged as a password is usually better as a named constant.
    `broker` from `app.infrastructure.broker`)
 4. Add `<name>/crons/__init__.py` for scheduled tasks (`@broker.task` with a
    `schedule` label)
-5. Include its router in `api.py`
-6. Import its models in `alembic/env.py` so autogenerate sees the tables
-7. `make makemigrations m="add <name>"` then `make migrate`
-8. Register admin views in `application.py` if the module needs them
-9. Add `tests/test_<name>.py`
-10. Run `make verify`
+5. Add `<name>/events/` — signal names in `__init__.py`, handlers in
+   `handlers.py` — and import `handlers` in `application.py` once it has any,
+   so they subscribe at startup
+6. Include its router in `api.py`
+7. Import its models in `alembic/env.py` so autogenerate sees the tables
+8. `make makemigrations m="add <name>"` then `make migrate`
+9. Register admin views in `application.py` if the module needs them
+10. Add `tests/test_<name>.py`
+11. Run `make verify`

@@ -4,9 +4,11 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from app.events import bus
 from app.exceptions.errors import ConflictError
 from app.security.passwords import hash_password
 
+from ..events import USER_REGISTERED
 from ..metrics import user_registrations_total
 
 if TYPE_CHECKING:
@@ -27,4 +29,5 @@ class RegisterUser:
             email=email, hashed_password=hash_password(password), full_name=full_name
         )
         user_registrations_total.inc()
+        await bus.publish(USER_REGISTERED, user_id=str(user.id), email=user.email)
         return user

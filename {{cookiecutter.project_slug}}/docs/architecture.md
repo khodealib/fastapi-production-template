@@ -36,6 +36,7 @@ app/
 │   ├── logging.py         # structlog configuration
 │   ├── metrics.py         # Prometheus, exposed at /metrics
 │   └── tracing.py         # OpenTelemetry
+├── events/                # bus.py — in-process async EventBus + subscribe
 ├── health/                # /live, /ready, /health
 ├── utils/                 # datetime.py (utcnow) and other small shared helpers
 ├── infrastructure/        # admin_auth, broker, scheduler, cache, email,
@@ -51,6 +52,7 @@ app/
         ├── metrics.py     # Prometheus counters for this module's events
         ├── tasks/         # TaskIQ background tasks
         ├── crons/         # TaskIQ scheduled tasks (cron schedules)
+        ├── events/        # signal names + async handlers on the event bus
         └── admin.py       # SQLAdmin views
 ```
 
@@ -102,6 +104,13 @@ this layout — it starts there.
   metrics; its use cases increment them after a state change or on each error
   path. They surface on `/metrics` alongside the HTTP series that
   `observability/metrics.py` collects.
+- **Events** — `app/events` is an in-process async bus, the Django-signal
+  equivalent. A use case publishes after a successful side effect
+  (`await bus.publish(USER_REGISTERED, ...)`); a module's `events/handlers.py`
+  subscribes with `@subscribe(...)` and `application.py` imports it so the
+  handlers exist before the first request. Handlers run concurrently inside the
+  publishing request and a raising one is logged, not propagated — anything that
+  must outlive the response belongs in `tasks/` as a TaskIQ task instead.
 
 ## The response envelope
 

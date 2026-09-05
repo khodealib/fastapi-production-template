@@ -27,6 +27,10 @@ from app.middleware import (
     RequestContextMiddleware,
 )
 from app.modules.users.admin import register_admin
+
+# Imported for its side effect: the module's handlers subscribe to the event bus
+# at import time, so they must be loaded before the first request is served.
+from app.modules.users.events import handlers as _users_event_handlers
 from app.observability.logging import configure_logging
 from app.observability.metrics import setup_metrics
 from app.observability.tracing import setup_tracing

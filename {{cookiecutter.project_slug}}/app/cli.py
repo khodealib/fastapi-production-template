@@ -31,8 +31,12 @@ def new_module(
     typer.echo(f"  1. Add routes to api.py: from app.modules.{name}.routes import")
     typer.echo(f"     {name}_router")
     typer.echo("  2. Import models in alembic/env.py")
-    typer.echo(f"  3. Run: make makemigrations m='add {name}'")
-    typer.echo("  4. Run: make migrate")
+    typer.echo(
+        f"  3. Import app.modules.{name}.events.handlers in application.py "
+        "once it has handlers"
+    )
+    typer.echo(f"  4. Run: make makemigrations m='add {name}'")
+    typer.echo("  5. Run: make migrate")
 
 
 def _scaffold(base: Path, name: str) -> None:
@@ -119,6 +123,26 @@ def _scaffold(base: Path, name: str) -> None:
         "functions; ``app.infrastructure.scheduler`` discovers them from the\n"
         'broker registry.\n"""\n'
         "from __future__ import annotations\n",
+    )
+
+    _write(
+        base / "events" / "__init__.py",
+        f'"""Event signal names for the {name} module.\n'
+        "\n"
+        "Name them ``<module>.<past_tense_verb>``, e.g.\n"
+        f'``{name.upper()}_CREATED = "{name}.created"``.\n"""\n'
+        "from __future__ import annotations\n",
+    )
+
+    _write(
+        base / "events" / "handlers.py",
+        f'"""Event handlers for the {name} module.\n'
+        "\n"
+        "Import this module from ``application.py`` so the handlers below\n"
+        'subscribe before the first request is served.\n"""\n'
+        "from __future__ import annotations\n"
+        "\n"
+        "from app.events import subscribe  # noqa: F401\n",
     )
 
 

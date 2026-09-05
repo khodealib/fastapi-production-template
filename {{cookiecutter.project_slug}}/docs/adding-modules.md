@@ -7,7 +7,7 @@ alongside this page.
 ## 1. Create the packages
 
 ```bash
-mkdir -p app/modules/items/{models,schemas,repositories,usecases,routes}
+mkdir -p app/modules/items/{models,schemas,repositories,usecases,routes,events}
 ```
 
 | Package or file | Holds |
@@ -22,6 +22,7 @@ mkdir -p app/modules/items/{models,schemas,repositories,usecases,routes}
 | `metrics.py` | Prometheus counters for this module's business events |
 | `tasks/` | TaskIQ background tasks (`@broker.task`) |
 | `crons/` | TaskIQ scheduled tasks — `@broker.task` with a `schedule` label |
+| `events/` | Signal names (`__init__.py`) and async handlers (`handlers.py`) |
 
 Every package gets an `__init__.py` that re-exports its public names, so callers
 write `from ..usecases import CreateItem` and never reach into a file directly.
@@ -93,6 +94,40 @@ class CreateItem:
 Metrics with an `outcome` label (`["outcome"]`) are worth it wherever a use case
 can fail for a business reason: increment `outcome="failure"` before *every*
 `raise` and `outcome="success"` before the return, or the ratio lies.
+
+The same use case can also announce the change on the in-process event bus, so
+unrelated code can react without the use case knowing about it. Signal names go
+in `events/__init__.py`, handlers in `events/handlers.py`:
+
+```python
+# events/__init__.py
+ITEM_CREATED = "items.created"
+
+# events/handlers.py
+from app.events import subscribe
+
+from . import ITEM_CREATED
+
+
+@subscribe(ITEM_CREATED)
+async def on_item_created(item_id: str) -> None:
+    ...
+```
+
+```python
+# usecases/create_item.py
+from app.events import bus
+
+from ..events import ITEM_CREATED
+
+items_created_total.inc()
+await bus.publish(ITEM_CREATED, item_id=str(item.id))
+```
+
+Handlers subscribe at import time, so `application.py` must import
+`app.modules.items.events.handlers` for its side effect. They run concurrently
+inside the publishing request and a raising handler is logged rather than
+propagated — work that must outlive the response belongs in `tasks/` instead.
 
 ## 5. The router — `routes/items.py`
 
