@@ -167,6 +167,8 @@ def _write(path: Path, content: str) -> None:
 @cli.command("seed")
 def seed() -> None:
     """Load fixture data from fixtures/users.json into the database."""
+    # Lazy imports: avoids pulling the full app (DB engine, settings) into the
+    # CLI process until the `seed` sub-command is actually invoked.
     import asyncio
     import json
 

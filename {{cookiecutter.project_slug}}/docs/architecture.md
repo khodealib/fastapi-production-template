@@ -105,8 +105,11 @@ this layout — it starts there.
   path. They surface on `/metrics` alongside the HTTP series that
   `observability/metrics.py` collects.
 - **Events** — `app/events` is an in-process async bus, the Django-signal
-  equivalent. A use case publishes after a successful side effect
-  (`await bus.publish(USER_REGISTERED, ...)`); a module's `events/handlers.py`
+  equivalent, driven by *collect and dispatch*. A use case does not publish: it
+  returns `tuple[Result, list[DomainEvent]]`, and the route publishes what it
+  collected with `await dispatch_events(events)` once the use case succeeds —
+  which keeps use cases side-effect-free and testable in isolation. A module's
+  `events/handlers.py`
   subscribes with `@subscribe(...)` and `application.py` imports it so the
   handlers exist before the first request. Handlers run concurrently inside the
   publishing request and a raising one is logged, not propagated — anything that

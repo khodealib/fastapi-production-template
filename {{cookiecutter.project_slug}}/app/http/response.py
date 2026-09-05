@@ -6,6 +6,8 @@ from typing import TypeVar
 
 from fastapi import Request
 
+from app.exceptions.errors import AppError
+
 from .pagination import Page, PageParams
 from .schemas import Envelope, EnvelopeList, EnvelopeMeta, ErrorDetail
 
@@ -46,8 +48,6 @@ def error_response(
     meta: EnvelopeMeta | None = None,
 ) -> Envelope[None]:
     """Create an error envelope response from an AppError."""
-    from app.exceptions.errors import AppError
-
     request_id = _get_request_id(request)
     if meta is None:
         meta = EnvelopeMeta(request_id=request_id)

@@ -1,11 +1,33 @@
 """Tests for the in-process event bus."""
 
 import logging
+from collections.abc import Iterator
+from typing import Any
 
 import pytest
+from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
-from app.events import EventBus
+from app.events import DomainEvent, EventBus, bus, dispatch_events
 from app.modules.users.events import USER_LOGGED_IN, USER_REGISTERED
+from app.modules.users.repositories import UserRepository
+from app.modules.users.usecases import AuthenticateUser, RegisterUser
+
+PASSWORD = "SuperS3cret!"
+EMAIL = "collector@example.com"
+
+
+@pytest.fixture
+def recorded() -> Iterator[list[dict[str, Any]]]:
+    """Record `users.registered` payloads on the shared bus, then unsubscribe."""
+    seen: list[dict[str, Any]] = []
+
+    async def recorder(**kwargs: Any) -> None:
+        seen.append(kwargs)
+
+    bus.subscribe(USER_REGISTERED)(recorder)
+    yield seen
+    bus._handlers[USER_REGISTERED].remove(recorder)
 
 
 async def test_publish_without_handlers_is_a_no_op() -> None:
@@ -93,3 +115,77 @@ async def test_users_module_handlers_are_registered(
 
     assert "User registered" in caplog.text
     assert "User logged in" in caplog.text
+
+
+async def test_dispatch_events_publishes_each_collected_event(
+    recorded: list[dict[str, Any]],
+) -> None:
+    """`dispatch_events` fans a collected list out to the shared bus in order."""
+    await dispatch_events(
+        [
+            DomainEvent(USER_REGISTERED, {"user_id": "u-1", "email": "a@example.com"}),
+            DomainEvent(USER_REGISTERED, {"user_id": "u-2", "email": "b@example.com"}),
+        ]
+    )
+
+    assert [payload["user_id"] for payload in recorded] == ["u-1", "u-2"]
+
+
+async def test_dispatch_events_with_no_events_is_a_no_op(
+    recorded: list[dict[str, Any]],
+) -> None:
+    """A use case that collected nothing publishes nothing."""
+    await dispatch_events([])
+
+    assert recorded == []
+
+
+async def test_register_user_collects_instead_of_publishing(
+    session_factory: async_sessionmaker[AsyncSession],
+    recorded: list[dict[str, Any]],
+) -> None:
+    """The use case returns the event and leaves publishing to its caller."""
+    async with session_factory() as session:
+        user, events = await RegisterUser(UserRepository(session)).execute(
+            email=EMAIL, password=PASSWORD, full_name="Collector"
+        )
+
+    assert recorded == []
+    assert events == [
+        DomainEvent(USER_REGISTERED, {"user_id": str(user.id), "email": user.email})
+    ]
+
+    await dispatch_events(events)
+
+    assert recorded == [{"user_id": str(user.id), "email": user.email}]
+
+
+async def test_authenticate_user_collects_instead_of_publishing(
+    session_factory: async_sessionmaker[AsyncSession],
+) -> None:
+    """Authentication is side-effect-free too: the login event is returned."""
+    async with session_factory() as session:
+        repo = UserRepository(session)
+        registered, _ = await RegisterUser(repo).execute(
+            email=EMAIL, password=PASSWORD, full_name="Collector"
+        )
+        user, events = await AuthenticateUser(repo).execute(
+            email=EMAIL, password=PASSWORD
+        )
+
+    assert user.id == registered.id
+    assert events == [DomainEvent(USER_LOGGED_IN, {"user_id": str(user.id)})]
+
+
+async def test_register_route_dispatches_the_collected_events(
+    client: AsyncClient,
+    recorded: list[dict[str, Any]],
+) -> None:
+    """The route is the layer that publishes, so the handler still fires."""
+    resp = await client.post(
+        "/auth/register",
+        json={"email": EMAIL, "password": PASSWORD, "full_name": "Collector"},
+    )
+
+    assert resp.status_code == 201
+    assert recorded == [{"user_id": resp.json()["data"]["id"], "email": EMAIL}]

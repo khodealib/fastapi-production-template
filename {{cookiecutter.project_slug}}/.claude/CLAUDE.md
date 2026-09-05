@@ -156,22 +156,27 @@ FastAPI.
 
 ## Conventions
 
-- **Import style**: within a module (`modules/<name>/`), use relative imports.
-  For anything outside the module boundary — cross-cutting packages
-  (`app.config`, `app.database`, `app.security`, etc.) — use absolute imports
-  (`from app.X import Y`). Never use `...` to escape a module; that is a signal
-  to switch to absolute. The same rule applies to the cross-cutting packages
-  themselves: `.sibling` inside `http/`, `app.exceptions.errors` to reach out
+- **Import style**: single-dot relative (`from .sibling import`) only for files
+  in the **same directory**. Everything else — a sibling package, a parent
+  package, cross-cutting packages (`app.config`, `app.database`, `app.security`,
+  etc.) — must be an absolute import (`from app.X import Y`). No `..` anywhere.
+  `grep -rn "^from \.\." app/` must come back empty.
+- **No imports inside functions** unless the sole purpose is breaking a circular
+  import. Top-level imports only; put a comment explaining the circular import
+  when a local import is unavoidable.
 - Each module's use cases instrument business events via the module's
-  `metrics.py`. Import the metric relatively (`from ..metrics import
-  user_registrations_total`) and call it after the side effect succeeds or in
+  `metrics.py`. Import the metric at module level (`from app.modules.<name>.metrics import
+  ...`) and call it after the side effect succeeds or in
   every error path. Do not instrument HTTP-level events in use cases —
   `observability/metrics.py` handles those
-- Use cases announce state changes with `await bus.publish(SIGNAL, ...)` from
-  `app.events`, after the side effect succeeds. The bus is **in-process**:
-  handlers run inside the request, concurrently, and a raising handler is logged
-  rather than propagated. Anything that must outlive the response is a TaskIQ
-  task in `tasks/`, not an event handler
+- Use cases announce state changes by **collecting, not publishing**: a use case
+  that emits events returns `tuple[Result, list[DomainEvent]]` and stays free of
+  side effects; the route calls `await dispatch_events(events)` after it
+  succeeds. Both names come from `app.events`. A use case with no events keeps
+  its plain single-value return type. The bus is **in-process**: handlers run
+  inside the request, concurrently, and a raising handler is logged rather than
+  propagated. Anything that must outlive the response is a TaskIQ task in
+  `tasks/`, not an event handler
 - Session type: `Session` from `database.session` — already
   `Annotated[AsyncSession, Depends(get_session)]`
 - Use cases are classes with an `execute()` method

@@ -54,7 +54,7 @@ async def _create_superuser(
 ) -> None:
     async with session_factory() as session:
         user_repo = UserRepository(session)
-        user = await RegisterUser(user_repo).execute(
+        user, _events = await RegisterUser(user_repo).execute(
             email="admin@example.com", password=password, full_name="Admin"
         )
         user.is_superuser = True

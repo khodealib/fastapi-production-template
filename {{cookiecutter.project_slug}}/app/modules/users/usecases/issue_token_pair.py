@@ -18,8 +18,8 @@ from app.utils.hashing import sha256_hex
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from ..models import User
-    from ..repositories import RefreshTokenRepository, UserRepository
+    from app.modules.users.models import User
+    from app.modules.users.repositories import RefreshTokenRepository, UserRepository
 
 
 class IssueTokenPair:

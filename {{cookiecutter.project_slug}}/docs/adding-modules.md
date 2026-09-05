@@ -96,7 +96,9 @@ can fail for a business reason: increment `outcome="failure"` before *every*
 `raise` and `outcome="success"` before the return, or the ratio lies.
 
 The same use case can also announce the change on the in-process event bus, so
-unrelated code can react without the use case knowing about it. Signal names go
+unrelated code can react without the use case knowing about it. It does that by
+*collecting*: the use case returns the events it wants published and the route
+dispatches them, so the use case itself performs no side effect. Signal names go
 in `events/__init__.py`, handlers in `events/handlers.py`:
 
 ```python
@@ -116,13 +118,24 @@ async def on_item_created(item_id: str) -> None:
 
 ```python
 # usecases/create_item.py
-from app.events import bus
+from app.events import DomainEvent
 
 from ..events import ITEM_CREATED
 
+# ... inside execute(), which returns tuple[Item, list[DomainEvent]]:
 items_created_total.inc()
-await bus.publish(ITEM_CREATED, item_id=str(item.id))
+return item, [DomainEvent(ITEM_CREATED, {"item_id": str(item.id)})]
 ```
+
+```python
+# routes/items.py
+from app.events import dispatch_events
+
+item, events = await CreateItem(item_repo).execute(...)
+await dispatch_events(events)
+```
+
+A use case that emits no events keeps its plain single-value return type.
 
 Handlers subscribe at import time, so `application.py` must import
 `app.modules.items.events.handlers` for its side effect. They run concurrently

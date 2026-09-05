@@ -11,10 +11,9 @@ from app.exceptions.errors import ForbiddenError, NotFoundError, UnauthorizedErr
 from app.http.openapi import error_responses
 from app.http.pagination import PageParams, page_params
 from app.http.response import paginated_response, success_response
-
-from ..deps import CurrentUser, SuperUser, UserRepo
-from ..schemas import UserListEnvelope, UserRead, UserReadEnvelope
-from ..usecases import GetUserById, ListUsers
+from app.modules.users.deps import CurrentUser, SuperUser, UserRepo
+from app.modules.users.schemas import UserListEnvelope, UserRead, UserReadEnvelope
+from app.modules.users.usecases import GetUserById, ListUsers
 
 users_router = APIRouter(
     prefix="/users",

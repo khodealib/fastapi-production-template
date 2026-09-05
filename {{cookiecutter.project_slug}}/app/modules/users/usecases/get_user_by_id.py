@@ -7,8 +7,8 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from uuid import UUID
 
-    from ..models import User
-    from ..repositories import UserRepository
+    from app.modules.users.models import User
+    from app.modules.users.repositories import UserRepository
 
 
 class GetUserById:

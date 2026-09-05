@@ -144,13 +144,11 @@ Only three rate-limit strategies are valid: `fixed-window`, `moving-window`,
 `sliding-window` (`RateLimitStrategy` in `infrastructure/ratelimit.py`). Keep
 `.env.example` and the docs aligned with that enum.
 
-**Import style**: within a module (`modules/<name>/`), use relative imports. For
-anything outside the module boundary — cross-cutting packages (`app.config`,
-`app.database`, `app.security`, etc.) — use absolute imports (`from app.X import
-Y`). Never use `...` to escape a module; that is a signal to switch to absolute.
-The same rule governs the cross-cutting packages themselves: `.sibling` within
-`http/`, `app.exceptions.errors` to reach out of it. `grep -rn "^from \.\.\."
-app/modules/` in a generated project must come back empty.
+**Import style**: use a single-dot relative import (`from .sibling import`) only
+for files in the **same directory**. Everything else — reaching a sibling
+package, a parent package, or a cross-cutting package — must be an absolute
+import (`from app.X import Y`). No `..` anywhere. `grep -rn "^from \.\."
+app/` in a generated project must come back empty.
 
 Each module's use cases instrument business events via the module's
 `metrics.py` (`from ..metrics import user_registrations_total`), called after the

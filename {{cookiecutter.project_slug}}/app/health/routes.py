@@ -9,6 +9,7 @@ from fastapi import APIRouter, Depends, Response, status
 from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app import __version__
 from app.database.session import get_session
 from app.infrastructure.cache import get_redis
 
@@ -107,8 +108,6 @@ async def health(
     Returns 200 if healthy, 503 if unhealthy.
     Provides detailed status of all checked dependencies.
     """
-    from app import __version__
-
     checks, all_ok = await _run_checks(session)
     response = HealthResponse(
         status="healthy" if all_ok else "unhealthy",

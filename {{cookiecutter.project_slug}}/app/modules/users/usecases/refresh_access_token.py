@@ -6,15 +6,15 @@ from typing import TYPE_CHECKING
 from uuid import UUID
 
 from app.exceptions.errors import UnauthorizedError
+from app.modules.users.metrics import token_refresh_total
 from app.security.constants import TOKEN_TYPE_REFRESH
 from app.security.jwt import InvalidTokenError, datetime_now_utc, decode_token
 from app.utils.hashing import sha256_hex
 
-from ..metrics import token_refresh_total
 from .issue_token_pair import IssueTokenPair
 
 if TYPE_CHECKING:
-    from ..repositories import RefreshTokenRepository, UserRepository
+    from app.modules.users.repositories import RefreshTokenRepository, UserRepository
 
 
 class RefreshAccessToken:

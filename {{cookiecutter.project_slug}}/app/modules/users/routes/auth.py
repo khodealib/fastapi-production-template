@@ -7,13 +7,13 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
 
+from app.events import dispatch_events
 from app.exceptions.errors import ConflictError, UnauthorizedError
 from app.http.openapi import error_responses
 from app.http.response import success_response
 from app.infrastructure.ratelimit import rate_limit
-
-from ..deps import RefreshTokenRepo, UserRepo
-from ..schemas import (
+from app.modules.users.deps import RefreshTokenRepo, UserRepo
+from app.modules.users.schemas import (
     RefreshRequest,
     TokenResponse,
     TokenResponseEnvelope,
@@ -21,7 +21,7 @@ from ..schemas import (
     UserRead,
     UserReadEnvelope,
 )
-from ..usecases import (
+from app.modules.users.usecases import (
     AuthenticateUser,
     IssueTokenPair,
     RefreshAccessToken,
@@ -47,9 +47,10 @@ async def register(
     payload: UserCreate,
     user_repo: UserRepo,
 ) -> UserReadEnvelope:
-    user = await RegisterUser(user_repo).execute(
+    user, events = await RegisterUser(user_repo).execute(
         email=payload.email, password=payload.password, full_name=payload.full_name
     )
+    await dispatch_events(events)
     return success_response(
         UserRead.model_validate(user),
         message="User registered successfully",
@@ -69,9 +70,10 @@ async def login(
     user_repo: UserRepo,
     token_repo: RefreshTokenRepo,
 ) -> TokenResponseEnvelope:
-    user = await AuthenticateUser(user_repo).execute(
+    user, events = await AuthenticateUser(user_repo).execute(
         email=form.username, password=form.password
     )
+    await dispatch_events(events)
     tokens = await IssueTokenPair(user_repo, token_repo).execute(user)
     return success_response(
         TokenResponse(**tokens),

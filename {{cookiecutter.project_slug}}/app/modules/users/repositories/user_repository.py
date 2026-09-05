@@ -8,7 +8,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import func, select
 
-from ..models import User, stmt_by_email
+from app.modules.users.models import User, stmt_by_email
 
 if TYPE_CHECKING:
     from uuid import UUID

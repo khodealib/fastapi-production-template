@@ -2,11 +2,18 @@
 
 Usage
 -----
-Publishing (from a use case, after the side-effect succeeds)::
+Collecting (from a use case, which stays free of side effects)::
 
-    from app.events import bus
+    from app.events import DomainEvent
 
-    await bus.publish("users.registered", user_id=str(user.id), email=user.email)
+    return user, [DomainEvent("users.registered", {"user_id": str(user.id)})]
+
+Dispatching (from the route, after the use case succeeds)::
+
+    from app.events import dispatch_events
+
+    user, events = await RegisterUser(user_repo).execute(...)
+    await dispatch_events(events)
 
 Subscribing (in a module's ``events/handlers.py``)::
 
@@ -30,6 +37,8 @@ import logging
 from collections import defaultdict
 from collections.abc import Callable, Coroutine
 from typing import Any
+
+from .domain_event import DomainEvent
 
 logger = logging.getLogger(__name__)
 
@@ -75,3 +84,9 @@ class EventBus:
 
 bus = EventBus()
 subscribe = bus.subscribe
+
+
+async def dispatch_events(events: list[DomainEvent]) -> None:
+    """Publish a list of domain events collected from a use case."""
+    for event in events:
+        await bus.publish(event.name, **event.payload)

@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 
 from sqlalchemy import delete, select
 
-from ..models import RefreshToken
+from app.modules.users.models import RefreshToken
 
 if TYPE_CHECKING:
     from uuid import UUID
