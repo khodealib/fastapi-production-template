@@ -12,7 +12,7 @@ make up           # start postgres + redis (docker compose)
 make dev          # dev server with reload → /docs, /admin
 make migrate      # alembic upgrade head
 make makemigrations m="msg"   # autogenerate a migration
-make worker       # Celery worker
+make worker       # TaskIQ worker
 make test         # pytest
 make coverage     # pytest with HTML report → htmlcov/index.html
 make watch        # re-run tests on file change (TDD)
@@ -102,6 +102,9 @@ packages — one responsibility per file, each package re-exporting from its
 - `admin.py` → SQLAdmin `ModelView`s + `register_admin()`
 - `metrics.py` → Prometheus `Counter`/`Histogram`/`Gauge` for business events in
   this module; use cases call them after state changes
+- `tasks/` → TaskIQ task definitions for this module (`async def` + `@broker.task`);
+  import `broker` from `app.infrastructure.broker` (absolute import, outside the
+  module boundary)
 
 This is the layout from the first file: a new module starts split, it does not
 grow into it.
@@ -129,7 +132,7 @@ catch-all `core/`:
   subject gets its own package
 
 `infrastructure/` holds external integrations: cache, email, i18n, rate limiting,
-tasks, and the SQLAdmin auth backend. `application.py` is the app factory
+the TaskIQ `broker.py`, and the SQLAdmin auth backend. `application.py` is the app factory
 (`create_app()`); `main.py` is the two-line ASGI entrypoint; `api.py` mounts
 every module router.
 
@@ -258,9 +261,11 @@ string flagged as a password is usually better as a named constant.
    `repositories/`, `usecases/`, `routes/`, `deps.py`, each with an
    `__init__.py` that re-exports its public names
 2. Add `<name>/metrics.py` with the module's business counters
-3. Include its router in `api.py`
-4. Import its models in `alembic/env.py` so autogenerate sees the tables
-5. `make makemigrations m="add <name>"` then `make migrate`
-6. Register admin views in `application.py` if the module needs them
-7. Add `tests/test_<name>.py`
-8. Run `make verify`
+3. Add `<name>/tasks/__init__.py` for TaskIQ task definitions (import
+   `broker` from `app.infrastructure.broker`)
+4. Include its router in `api.py`
+5. Import its models in `alembic/env.py` so autogenerate sees the tables
+6. `make makemigrations m="add <name>"` then `make migrate`
+7. Register admin views in `application.py` if the module needs them
+8. Add `tests/test_<name>.py`
+9. Run `make verify`

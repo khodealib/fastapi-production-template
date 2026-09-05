@@ -101,6 +101,16 @@ def _scaffold(base: Path, name: str) -> None:
         ")\n",
     )
 
+    _write(
+        base / "tasks" / "__init__.py",
+        f'"""Background tasks for the {name} module.\n'
+        "\n"
+        "Define TaskIQ tasks here as ``async def`` functions decorated with\n"
+        "``@broker.task``, importing ``broker`` from\n"
+        '``app.infrastructure.broker``.\n"""\n'
+        "from __future__ import annotations\n",
+    )
+
 
 def _write(path: Path, content: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)

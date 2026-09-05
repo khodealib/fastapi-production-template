@@ -48,7 +48,7 @@ services:
 
   worker:
     build: .
-    command: celery -A app.infrastructure.tasks.celery_app worker --loglevel=info
+    command: taskiq worker app.infrastructure.broker:broker
     environment:
       DATABASE_URL: postgresql+asyncpg://app:app@db:5432/{{ cookiecutter.project_slug }}
       REDIS_URL: redis://redis:6379/0

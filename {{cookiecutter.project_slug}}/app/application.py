@@ -20,6 +20,7 @@ from app.database.engine import dispose_engine, engine
 from app.exceptions.handlers import register_exception_handlers
 from app.health import health_router
 from app.infrastructure.admin_auth import AdminAuth
+from app.infrastructure.broker import broker
 from app.infrastructure.cache import close_redis
 from app.middleware import (
     RateLimitHeadersMiddleware,
@@ -48,10 +49,12 @@ def create_app() -> FastAPI:
         app: FastAPI,
     ) -> AsyncIterator[None]:
         settings.MEDIA_DIR.mkdir(parents=True, exist_ok=True)
+        await broker.startup()
         yield
         if tracer_provider is not None:
             # Flushes and joins the BatchSpanProcessor's export thread.
             tracer_provider.shutdown()
+        await broker.shutdown()
         await dispose_engine()
         await close_redis()
 

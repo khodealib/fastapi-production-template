@@ -22,8 +22,8 @@ migrate: # Apply DB migrations
 makemigrations: # Autogenerate a migration: make makemigrations m="msg"
 	uv run alembic revision --autogenerate -m "$(m)"
 
-worker: # Start a Celery worker
-	uv run celery -A app.infrastructure.tasks.celery_app worker --loglevel=info
+worker: # Start a TaskIQ worker
+	uv run taskiq worker app.infrastructure.broker:broker
 
 format: # Auto-format + fix
 	uv run ruff check --fix app tests && uv run ruff format app tests

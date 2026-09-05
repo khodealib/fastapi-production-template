@@ -25,7 +25,8 @@ dependencies = [
     "python-multipart>=0.0.9",
     "sqladmin>=0.20",
     "jinja2>=3.1",
-    "celery>=5.4",
+    "taskiq>=0.11",
+    "taskiq-redis>=1.0",
     "redis>=5.0",
     "structlog>=24.1",
     "limits>=3.10",
@@ -148,7 +149,11 @@ module = "alembic.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
-module = "celery.*"
+module = "taskiq.*"
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = "taskiq_redis.*"
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
@@ -166,7 +171,7 @@ module = "app.http.response"
 disable_error_code = ["no-any-return"]
 
 [[tool.mypy.overrides]]
-module = "app.infrastructure.tasks"
+module = ["app.infrastructure.broker", "app.modules.*.tasks.*"]
 disable_error_code = ["untyped-decorator"]
 
 [[tool.mypy.overrides]]
