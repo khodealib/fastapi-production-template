@@ -4,8 +4,8 @@
 
 - Python {{ cookiecutter.python_version }}+
 - PostgreSQL 16+
-- Redis 7+ (optional — caching, Celery and multi-worker rate limiting degrade
-  gracefully without it)
+- Redis 7+ (optional — caching, background tasks and multi-worker rate limiting
+  degrade gracefully without it; TaskIQ falls back to an in-memory broker)
 
 ## With uv
 

@@ -40,7 +40,7 @@ source of truth, and this page follows it.
 
 | Variable | Default | Description |
 |---|---|---|
-| `REDIS_URL` | unset | Cache, Celery broker and result backend. Unset means the cache no-ops and Celery runs eagerly |
+| `REDIS_URL` | unset | Cache, TaskIQ broker and result backend. Unset means the cache no-ops and TaskIQ uses an `InMemoryBroker` (no broker process needed) |
 | `CACHE_DEFAULT_TTL_SECONDS` | `300` | |
 
 ## Rate limiting

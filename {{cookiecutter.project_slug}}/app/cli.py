@@ -47,29 +47,35 @@ def _scaffold(base: Path, name: str) -> None:
     _write(
         base / "models" / "__init__.py",
         f'"""ORM models for the {name} module."""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
     _write(
         base / "repositories" / "__init__.py",
         f'"""Repository adapters for the {name} module."""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
     _write(
         base / "usecases" / "__init__.py",
-        f'"""Use cases for the {name} module."""\nfrom __future__ import annotations\n',
+        f'"""Use cases for the {name} module."""\n'
+        "\n"
+        "from __future__ import annotations\n",
     )
 
     _write(
         base / "schemas" / "__init__.py",
         f'"""Pydantic schemas for the {name} module."""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
     _write(
         base / "routes" / "__init__.py",
         f'"""HTTP routers for the {name} module."""\n'
+        "\n"
         "from __future__ import annotations\n"
         "\n"
         "from fastapi import APIRouter\n"
@@ -80,12 +86,14 @@ def _scaffold(base: Path, name: str) -> None:
     _write(
         base / "deps.py",
         f'"""FastAPI dependencies for the {name} module."""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
     _write(
         base / "admin.py",
         f'"""SQLAdmin views for the {name} module."""\n'
+        "\n"
         "from __future__ import annotations\n"
         "\n"
         "\n"
@@ -96,6 +104,7 @@ def _scaffold(base: Path, name: str) -> None:
     _write(
         base / "metrics.py",
         f'"""Business metrics for the {name} module."""\n'
+        "\n"
         "from prometheus_client import Counter\n"
         "\n"
         f"{name}_operations_total = Counter(\n"
@@ -112,6 +121,7 @@ def _scaffold(base: Path, name: str) -> None:
         "Define TaskIQ tasks here as ``async def`` functions decorated with\n"
         "``@broker.task``, importing ``broker`` from\n"
         '``app.infrastructure.broker``.\n"""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
@@ -122,6 +132,7 @@ def _scaffold(base: Path, name: str) -> None:
         'Define them as ``@broker.task(schedule=[{"cron": "0 2 * * *"}])``\n'
         "functions; ``app.infrastructure.scheduler`` discovers them from the\n"
         'broker registry.\n"""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
@@ -131,6 +142,7 @@ def _scaffold(base: Path, name: str) -> None:
         "\n"
         "Name them ``<module>.<past_tense_verb>``, e.g.\n"
         f'``{name.upper()}_CREATED = "{name}.created"``.\n"""\n'
+        "\n"
         "from __future__ import annotations\n",
     )
 
@@ -140,6 +152,7 @@ def _scaffold(base: Path, name: str) -> None:
         "\n"
         "Import this module from ``application.py`` so the handlers below\n"
         'subscribe before the first request is served.\n"""\n'
+        "\n"
         "from __future__ import annotations\n"
         "\n"
         "from app.events import subscribe  # noqa: F401\n",

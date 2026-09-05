@@ -177,8 +177,8 @@ prefix.
 | ORM + migrations | SQLAlchemy 2.0 async + Alembic |
 | Auth | JWT access + refresh (rotation), argon2 |
 | Forms | Pydantic v2 schemas per module |
-| Email | `send_email` via stdlib SMTP + Celery |
-| Task queue | Celery + Redis |
+| Email | `send_email` via stdlib SMTP + TaskIQ |
+| Task queue | TaskIQ + Redis |
 | Cache | Redis helpers (memory fallback) |
 | i18n | gettext + Babel |
 | Logging | structlog (JSON prod, console dev) |

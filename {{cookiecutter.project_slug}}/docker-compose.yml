@@ -61,9 +61,9 @@ services:
       api:
         condition: service_started
 
-  beat:
+  scheduler:
     build: .
-    command: celery -A app.infrastructure.tasks.celery_app beat --loglevel=info
+    command: taskiq scheduler app.infrastructure.scheduler:scheduler
     environment:
       REDIS_URL: redis://redis:6379/0
       ENVIRONMENT: development

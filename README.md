@@ -11,7 +11,7 @@ Batteries included: admin, auth, migrations, tasks, observability — all typed,
 ---
 
 A cookiecutter template that generates a production-ready FastAPI project with
-Django-grade batteries: admin panel, async ORM + migrations, JWT auth, Celery,
+Django-grade batteries: admin panel, async ORM + migrations, JWT auth, TaskIQ,
 structured logging, i18n, email, caching, and multi-strategy rate limiting —
 built with feature-based module layout and strict ruff/mypy/pytest under `uv`.
 
@@ -70,12 +70,12 @@ uv run --from cookiecutter cookiecutter .
 | ORM + migrations | SQLAlchemy 2.0 async + Alembic |
 | Auth | JWT access + refresh rotation, argon2 |
 | Rate limiting | `limits` library (fixed/moving/sliding window) |
-| Email | stdlib SMTP + Jinja2 templates, Celery task |
+| Email | stdlib SMTP + Jinja2 templates, TaskIQ task |
 | Cache | Redis helpers (no-op without `REDIS_URL`) |
 | i18n | gettext + Babel |
 | Logging | structlog (JSON prod, console dev) |
 | Metrics / tracing | Prometheus at `/metrics` (`ENABLE_METRICS`) + OpenTelemetry (`ENABLE_TRACING`, opt-in) |
-| Task queue | Celery + Redis |
+| Task queue | TaskIQ + Redis |
 
 ## Template Development
 

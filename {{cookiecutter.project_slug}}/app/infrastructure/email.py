@@ -1,4 +1,4 @@
-"""Email helper (stdlib smtplib + Jinja2 templates), runs as a Celery task.
+"""Email helper (stdlib smtplib + Jinja2 templates), runs as a TaskIQ task.
 
 SMTP is optional: helpers no-op when ``SMTP_HOST`` is unset, so local dev and
 the test suite don't need a mail server.
@@ -35,7 +35,7 @@ def send_email(
     *,
     _client: smtplib.SMTP | smtplib.SMTP_SSL | None = None,
 ) -> None:
-    """Send an email synchronously. Reliable under Celery; no-op w/o SMTP."""
+    """Send an email synchronously. Reliable under TaskIQ; no-op w/o SMTP."""
     settings = get_settings()
     if settings.SMTP_HOST is None:
         return
