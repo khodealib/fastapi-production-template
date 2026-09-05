@@ -10,29 +10,22 @@ Run the scheduler process alongside the worker::
     make scheduler   # uv run taskiq scheduler app.infrastructure.scheduler:scheduler
 
 The scheduler *enqueues* tasks; the worker *executes* them.
+
+Example — cleanup expired refresh tokens daily at 02:00 UTC
+------------------------------------------------------------
+::
+
+    from app.infrastructure.broker import broker
+
+    @broker.task(
+        schedule=[{"cron": "0 2 * * *", "args": [], "kwargs": {}}],
+    )
+    async def cleanup_expired_refresh_tokens() -> None:
+        from app.database.session import get_session
+        from app.modules.users.repositories import RefreshTokenRepository
+
+        async for session in get_session():
+            await RefreshTokenRepository(session).cleanup_expired()
 """
 
 from __future__ import annotations
-
-# ---------------------------------------------------------------------------
-# Example: cleanup expired refresh tokens daily at 02:00 UTC
-# (uncomment and adapt to activate)
-#
-# from app.infrastructure.broker import broker
-#
-#
-# @broker.task(
-#     schedule=[{"cron": "0 2 * * *", "args": [], "kwargs": {}}],
-# )
-# async def cleanup_expired_refresh_tokens() -> None:
-#     """Delete refresh tokens whose expires_at has passed.
-#
-#     The scheduler enqueues this task every day at 02:00 UTC; a worker picks it
-#     up and runs it.  No arguments are needed — the task queries the DB itself.
-#     """
-#     from app.database.session import get_session
-#     from app.modules.users.repositories import RefreshTokenRepository
-#
-#     async for session in get_session():
-#         await RefreshTokenRepository(session).cleanup_expired()
-# ---------------------------------------------------------------------------
