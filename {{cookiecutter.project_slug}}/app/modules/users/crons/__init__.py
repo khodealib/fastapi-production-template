@@ -4,17 +4,35 @@ Tasks are scheduled by attaching a ``schedule`` label to a ``@broker.task``.
 The ``LabelScheduleSource`` in ``infrastructure/scheduler.py`` reads these
 labels when the ``taskiq scheduler`` process starts.
 
-Example — send a daily digest to all active users at 08:00 UTC::
+Run the scheduler process alongside the worker::
 
-    from app.infrastructure.broker import broker
+    make worker      # uv run taskiq worker app.infrastructure.broker:broker
+    make scheduler   # uv run taskiq scheduler app.infrastructure.scheduler:scheduler
 
-    @broker.task(
-        schedule=[{"cron": "0 8 * * *", "args": [], "kwargs": {}}],
-    )
-    async def send_daily_digest() -> None:
-        ...  # query active users, send digest email
-
-The users module has no scheduled work of its own yet, so this package is empty.
+The scheduler *enqueues* tasks; the worker *executes* them.
 """
 
 from __future__ import annotations
+
+# ---------------------------------------------------------------------------
+# Example: cleanup expired refresh tokens daily at 02:00 UTC
+# (uncomment and adapt to activate)
+#
+# from app.infrastructure.broker import broker
+#
+#
+# @broker.task(
+#     schedule=[{"cron": "0 2 * * *", "args": [], "kwargs": {}}],
+# )
+# async def cleanup_expired_refresh_tokens() -> None:
+#     """Delete refresh tokens whose expires_at has passed.
+#
+#     The scheduler enqueues this task every day at 02:00 UTC; a worker picks it
+#     up and runs it.  No arguments are needed — the task queries the DB itself.
+#     """
+#     from app.database.session import get_session
+#     from app.modules.users.repositories import RefreshTokenRepository
+#
+#     async for session in get_session():
+#         await RefreshTokenRepository(session).cleanup_expired()
+# ---------------------------------------------------------------------------
